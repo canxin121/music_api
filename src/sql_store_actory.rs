@@ -360,7 +360,7 @@ impl SqlMusicFactory {
         &self,
         music_list: &MusicList,
         new_index: Vec<i64>,
-        old_musics_in_order: &Vec<Music>,
+        old_musics_in_order: &Vec<&Music>,
     ) -> Result<(), anyhow::Error> {
         // 排序过程概述
         // 传入的old_music_in_order本身是按照index从小到大排序好的，但是这里无法得知到底是几，只知道大小关系
@@ -530,7 +530,7 @@ impl SqlMusicFactory {
     // 更改音乐数据信息
     pub async fn change_music_data(
         &self,
-        musics: Vec<&Music>,
+        musics: &Vec<&Music>,
         infos: Vec<MusicInfo>,
     ) -> Result<(), anyhow::Error> {
         if musics.len() != infos.len() {
