@@ -1,0 +1,24 @@
+[package]
+name = "music_api"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.82"
+futures = "0.3.30"
+lazy_static = "1.4.0"
+reqwest = { version = "0.12.4", features = [
+    "json",
+    "rustls-tls",
+    "rustls-tls-webpki-roots",
+], default-features = false }
+sea-orm = "0.12.15"
+sea-query = "0.30.7"
+sea-query-binder = { version = "0.5.0", features = ["sqlx-any"] }
+serde = { version = "1.0.198", features = ["derive"] }
+serde_json = "1.0.116"
+sqlx = { version = "0.7.4", features = ["runtime-tokio", "sqlite"] }
+tokio = { version = "1.37.0", features = ["full"] }
+urlencoding = "2.1.3"
