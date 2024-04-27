@@ -11,7 +11,7 @@ use sea_query::{
 };
 use serde::{Deserialize, Serialize};
 
-use sqlx::{any::AnyRow, Acquire as _, AnyPool, Row as _};
+use sqlx::{any::AnyRow, Acquire as _, Any, AnyPool, Pool, Row as _};
 
 use crate::{
     kuwo::{
@@ -47,37 +47,17 @@ pub const ID: StrIden = StrIden("Id");
 pub const DEFAULTSOURCE: StrIden = StrIden("DefaultSource");
 pub const REFS: StrIden = StrIden("Refs");
 pub const INDEX: StrIden = StrIden("Index");
-pub struct SqlMusicFactory {}
+pub struct SqlMusicFactory {
+    pool: Pool<Any>,
+}
 
 impl SqlMusicFactory {
-    // 删除音乐数据
-    // async fn del_music_data(
-    //     source: &str,
-    //     musics: Vec<&Music>,
-    //     pool: &AnyPool,
-    // ) -> Result<(), anyhow::Error> {
-    //     let mut conn = pool.acquire().await?;
-    //     let mut tx = conn.begin().await?;
-
-    //     for music in musics {
-    //         let (k, v) = music.get_primary_kv();
-    //         let delete_query = Query::delete()
-    //             .from_table(StringIden(source.to_string()))
-    //             .and_where(Expr::col(StringIden(k)).eq(v))
-    //             .to_owned();
-
-    //         let (delete_sql, delete_values) = build_sqlx_query(delete_query).await?;
-    //         sqlx::query_with(&delete_sql, delete_values)
-    //             .execute(&mut *tx)
-    //             .await?;
-    //     }
-
-    //     tx.commit().await?;
-    //     Ok(())
-    // }
+    pub fn new(pool: AnyPool) -> SqlMusicFactory {
+        SqlMusicFactory { pool }
+    }
     // 插入音乐数据
-    async fn insert_music_data(musics: &Vec<&Music>, pool: &AnyPool) -> Result<(), anyhow::Error> {
-        let mut conn = pool.acquire().await?;
+    async fn insert_music_data(&self, musics: &Vec<&Music>) -> Result<(), anyhow::Error> {
+        let mut conn = self.pool.acquire().await?;
         let mut tx = conn.begin().await?;
 
         for music in musics {
@@ -93,7 +73,7 @@ impl SqlMusicFactory {
     }
 
     // 创建自定义歌单元数据表
-    async fn create_music_list_metadata_table(pool: &AnyPool) -> Result<(), anyhow::Error> {
+    async fn create_music_list_metadata_table(&self) -> Result<(), anyhow::Error> {
         let query = TableCreateStatement::new()
             .table(REFMETADATA)
             .col(ColumnDef::new(REFNAME).string().not_null())
@@ -101,14 +81,14 @@ impl SqlMusicFactory {
             .col(ColumnDef::new(REFDESC).integer())
             .col(ColumnDef::new(ID).integer().primary_key().auto_increment())
             .clone();
-        let mut conn = pool.acquire().await?;
+        let mut conn = self.pool.acquire().await?;
         let s: String = build_query(query).await?;
         sqlx::query(&s).execute(&mut *conn).await?;
         Ok(())
     }
     // 初始化操作，创建所有原始数据表
-    async fn create_music_data_table(pool: &AnyPool) -> Result<(), anyhow::Error> {
-        let mut conn = pool.acquire().await?;
+    async fn create_music_data_table(&self) -> Result<(), anyhow::Error> {
+        let mut conn = self.pool.acquire().await?;
         let mut tx = conn.begin().await?;
         let query1 = KuwoMusic::create_table_query();
         let s1: String = build_query(query1).await?;
@@ -119,18 +99,18 @@ impl SqlMusicFactory {
     // 将自定义歌单信息插入插入自定义歌单元数据表
     // 删除自定义歌单的元数据
     async fn del_music_list_metadata(
-        reference_table: &Vec<MusicList>,
-        pool: &AnyPool,
+        &self,
+        music_list: &Vec<MusicList>,
     ) -> Result<(), anyhow::Error> {
         let mut cond = Cond::any();
-        for r in reference_table {
+        for r in music_list {
             cond = cond.add(Expr::col(REFNAME).eq(r.name.clone()));
         }
         let query = Query::delete()
             .from_table(REFMETADATA)
             .cond_where(cond)
             .to_owned();
-        let mut conn = pool.acquire().await?;
+        let mut conn = self.pool.acquire().await?;
         let mut tx: sqlx::Transaction<'_, sqlx::Any> = conn.begin().await?;
 
         let (delete_sql, delete_values) = build_sqlx_query(query).await?;
@@ -147,19 +127,19 @@ impl SqlMusicFactory {
     /// 对自定义歌单的操作
 
     async fn insert_music_list_matadata(
-        reference_tables: &Vec<MusicList>,
-        pool: &AnyPool,
+        &self,
+        music_lists: &Vec<MusicList>,
     ) -> Result<(), anyhow::Error> {
-        let mut conn = pool.acquire().await?;
+        let mut conn = self.pool.acquire().await?;
         let mut tx = conn.begin().await?;
-        for reference_table in reference_tables {
+        for music_list in music_lists {
             let query = InsertStatement::new()
                 .into_table(REFMETADATA)
                 .columns(vec![REFNAME, REFDESC, REFARTPIC])
                 .values_panic(vec![
-                    reference_table.name.clone().into(),
-                    reference_table.desc.clone().into(),
-                    reference_table.art_pic.clone().into(),
+                    music_list.name.clone().into(),
+                    music_list.desc.clone().into(),
+                    music_list.art_pic.clone().into(),
                 ])
                 .to_owned();
 
@@ -174,14 +154,14 @@ impl SqlMusicFactory {
 
     // 创建一个自定义歌单表
     pub async fn create_music_list_table(
-        reference_tables: &Vec<MusicList>,
-        pool: &AnyPool,
+        &self,
+        music_lists: &Vec<MusicList>,
     ) -> Result<(), anyhow::Error> {
-        let mut conn = pool.acquire().await?;
+        let mut conn = self.pool.acquire().await?;
         let mut tx = conn.begin().await?;
-        for reference_table in reference_tables {
+        for music_list in music_lists {
             let query = TableCreateStatement::new()
-                .table(StringIden(reference_table.name.to_string()))
+                .table(StringIden(music_list.name.to_string()))
                 .col(
                     ColumnDef::new(ID)
                         .integer()
@@ -198,17 +178,17 @@ impl SqlMusicFactory {
         }
         tx.commit().await?;
         // 最后插入元数据
-        Self::insert_music_list_matadata(reference_tables, pool).await?;
+        self.insert_music_list_matadata(music_lists).await?;
         Ok(())
     }
 
     // 修改自定义歌单元数据
-    pub async fn change_ref_metadata(
+    pub async fn change_music_list_metadata(
+        &self,
         old: &Vec<MusicList>,
         new: &Vec<MusicList>,
-        pool: &AnyPool,
     ) -> Result<(), anyhow::Error> {
-        let mut conn = pool.acquire().await?;
+        let mut conn = self.pool.acquire().await?;
         let mut tx = conn.begin().await?;
         for (old_one, new_one) in old.iter().zip(new) {
             let mut query = Query::update().table(REFMETADATA).to_owned();
@@ -261,22 +241,22 @@ impl SqlMusicFactory {
     }
 
     // 获取所有自定义歌单
-    pub async fn read_music_lists(pool: &AnyPool) -> Result<Vec<MusicList>, anyhow::Error> {
-        let mut conn = pool.acquire().await?;
+    pub async fn read_music_lists(&self) -> Result<Vec<MusicList>, anyhow::Error> {
+        let mut conn = self.pool.acquire().await?;
         // 先获取所有的ref数据
-        let ref_query = Query::select()
+        let music_list_query = Query::select()
             .from(REFMETADATA)
             .columns(vec![REFNAME, REFARTPIC, REFDESC])
             .clone();
-        let (ref_sql, ref_values) = build_sqlx_query(ref_query).await?;
+        let (music_list_sql, music_list_values) = build_sqlx_query(music_list_query).await?;
 
-        let ref_results = sqlx::query_with(&ref_sql, ref_values)
+        let music_list_results = sqlx::query_with(&music_list_sql, music_list_values)
             .fetch_all(&mut *conn)
             .await?;
         let mut results = Vec::new();
-        for result in ref_results {
-            if let Ok(ref_) = MusicList::from_row(result) {
-                results.push(ref_);
+        for result in music_list_results {
+            if let Ok(music_list_) = MusicList::from_row(result) {
+                results.push(music_list_);
             }
         }
         Ok(results)
@@ -284,17 +264,17 @@ impl SqlMusicFactory {
 
     // 删除一个自定义歌单
     pub async fn del_music_list_table(
-        reference_tables: &Vec<MusicList>,
-        pool: &AnyPool,
+        &self,
+        music_lists: &Vec<MusicList>,
     ) -> Result<(), anyhow::Error> {
         // 先删去元数据
-        Self::del_music_list_metadata(reference_tables, pool).await?;
+        self.del_music_list_metadata(music_lists).await?;
 
         let mut query = Table::drop().to_owned();
-        reference_tables.iter().for_each(|r| {
+        music_lists.iter().for_each(|r| {
             query.table(StringIden(r.name.to_string()));
         });
-        let mut conn = pool.acquire().await?;
+        let mut conn = self.pool.acquire().await?;
 
         let s = build_query(query).await?;
         sqlx::query(&s).execute(&mut *conn).await?;
@@ -305,18 +285,18 @@ impl SqlMusicFactory {
 
     // 向自定义歌单插入音乐
     pub async fn insert_music(
-        reference_table: &MusicList,
+        &self,
+        music_list: &MusicList,
         musics: &Vec<&Music>,
-        pool: &AnyPool,
     ) -> Result<(), anyhow::Error> {
         // Check if the lengths of index and musics match
         // 先插入到原始数据表中
-        Self::insert_music_data(musics, pool).await?;
+        self.insert_music_data(musics).await?;
 
-        let mut conn = pool.acquire().await?;
+        let mut conn = self.pool.acquire().await?;
         let mut tx = conn.begin().await?;
 
-        let result = sqlx::query(&format!("SELECT MAX(Id) FROM '{}'", reference_table.name))
+        let result = sqlx::query(&format!("SELECT MAX(Id) FROM '{}'", music_list.name))
             .fetch_one(&mut *tx)
             .await?;
         let max_id: i64 = result.try_get(0).unwrap_or(0);
@@ -326,16 +306,16 @@ impl SqlMusicFactory {
         for (music, index) in musics.iter().zip(indexs) {
             let (k, v) = music.get_primary_kv();
             let source = music.source();
-            let ref_ = vec![Ref {
+            let music_list_ = vec![Ref {
                 t: source.to_owned(),
                 k,
                 v,
             }];
             let query = InsertStatement::new()
-                .into_table(StringIden(reference_table.name.to_string()))
+                .into_table(StringIden(music_list.name.to_string()))
                 .columns(vec![REFS, DEFAULTSOURCE, INDEX])
                 .values_panic(vec![
-                    serde_json::to_string(&ref_).unwrap().into(),
+                    serde_json::to_string(&music_list_).unwrap().into(),
                     music.source().into(),
                     index.into(),
                 ])
@@ -352,17 +332,17 @@ impl SqlMusicFactory {
 
     // 删除自定义歌单中的音乐
     pub async fn del_music(
-        reference_table: &MusicList,
-        indexs: Vec<i64>,
-        pool: &AnyPool,
+        &self,
+        music_list: &MusicList,
+        ids: Vec<i64>,
     ) -> Result<(), anyhow::Error> {
-        let mut conn = pool.acquire().await?;
+        let mut conn = self.pool.acquire().await?;
         let mut tx: sqlx::Transaction<'_, sqlx::Any> = conn.begin().await?;
 
-        for index in indexs {
+        for id in ids {
             let delete_query = Query::delete()
-                .from_table(StringIden(reference_table.name.to_string()))
-                .cond_where(Cond::any().add(Expr::col(INDEX).eq(index)))
+                .from_table(StringIden(music_list.name.to_string()))
+                .cond_where(Cond::any().add(Expr::col(ID).eq(id)))
                 .to_owned();
 
             let (delete_sql, delete_values) = build_sqlx_query(delete_query).await?;
@@ -377,14 +357,14 @@ impl SqlMusicFactory {
 
     // 更改自定义歌单的歌曲顺序
     pub async fn reorder_music(
-        reference_table: &MusicList,
+        &self,
+        music_list: &MusicList,
         new_index: Vec<i64>,
         old_musics_in_order: &Vec<Music>,
-        pool: &AnyPool,
     ) -> Result<(), anyhow::Error> {
         // 排序过程概述
         // 传入的old_music_in_order本身是按照index从小到大排序好的，但是这里无法得知到底是几，只知道大小关系
-        // 注意old_music_in_order中的music的id是其在reference_table中的主键，而不是index顺序
+        // 注意old_music_in_order中的music的id是其在music_list中的主键，而不是index顺序
         // 传入的new_index是对应位置的music的新的index值
 
         // 所以排序只需要，拿到这个位置的music的新的index值，然后其更新到这个music的index上就好了
@@ -394,14 +374,14 @@ impl SqlMusicFactory {
             return Err(anyhow::Error::msg("Index and musics length mismatch"));
         }
 
-        let mut conn = pool.acquire().await?;
+        let mut conn = self.pool.acquire().await?;
 
         let mut tx = conn.begin().await?;
 
         for (new_index, old_music) in new_index.into_iter().zip(old_musics_in_order.into_iter()) {
             let id = old_music.get_music_id();
             let update_query = Query::update()
-                .table(StringIden(reference_table.name.to_string()))
+                .table(StringIden(music_list.name.to_string()))
                 .value(INDEX, new_index)
                 .and_where(Expr::col(ID).eq(id))
                 .to_owned();
@@ -419,42 +399,42 @@ impl SqlMusicFactory {
     }
 
     // 读取自定义歌单的所有音乐
-    pub async fn read_music(
-        reference_table: &MusicList,
-        pool: &AnyPool,
-    ) -> Result<Vec<Music>, anyhow::Error> {
-        let mut conn = pool.acquire().await?;
+    pub async fn read_music(&self, music_list: &MusicList) -> Result<Vec<Music>, anyhow::Error> {
+        let mut conn = self.pool.acquire().await?;
         // 先获取所有的ref数据
-        let ref_query = Query::select()
-            .from(StringIden(reference_table.name.to_string()))
+        let music_list_query = Query::select()
+            .from(StringIden(music_list.name.to_string()))
             .columns(vec![ID, INDEX, DEFAULTSOURCE, REFS])
             .clone();
-        let (ref_sql, ref_values) = build_sqlx_query(ref_query).await?;
+        let (music_list_sql, music_list_values) = build_sqlx_query(music_list_query).await?;
 
-        let ref_results = sqlx::query_with(&ref_sql, ref_values)
+        let music_list_results = sqlx::query_with(&music_list_sql, music_list_values)
             .fetch_all(&mut *conn)
             .await?;
 
         let mut music_indexs: Vec<(Music, i64)> = Vec::new();
 
-        for ref_result in ref_results.iter() {
+        for music_list_result in music_list_results.iter() {
             // 仅用于排序
-            let index_: i64 = ref_result.try_get(INDEX.0)?;
+            let index_: i64 = music_list_result.try_get(INDEX.0)?;
 
-            let default_source: String = ref_result.try_get(DEFAULTSOURCE.0)?;
-            let refs: String = ref_result.try_get(REFS.0)?;
-            let id: i64 = ref_result.try_get(ID.0)?;
-            let ref_ = serde_json::from_str::<Vec<Ref>>(&refs)?;
-            let ref_one = match ref_.into_iter().find(|ref_| ref_.t == default_source) {
+            let default_source: String = music_list_result.try_get(DEFAULTSOURCE.0)?;
+            let refs: String = music_list_result.try_get(REFS.0)?;
+            let id: i64 = music_list_result.try_get(ID.0)?;
+            let music_list_ = serde_json::from_str::<Vec<Ref>>(&refs)?;
+            let music_list_one = match music_list_
+                .into_iter()
+                .find(|music_list_| music_list_.t == default_source)
+            {
                 Some(r) => r,
                 None => continue,
             };
 
             // 在source数据中查询
             let data_query = Query::select()
-                .from(StringIden(ref_one.t.clone()))
+                .from(StringIden(music_list_one.t.clone()))
                 .column(Asterisk)
-                .and_where(Expr::col(StringIden(ref_one.k)).eq(ref_one.v))
+                .and_where(Expr::col(StringIden(music_list_one.k)).eq(music_list_one.v))
                 .clone();
 
             let (data_sql, data_values) = build_sqlx_query(data_query).await?;
@@ -463,7 +443,7 @@ impl SqlMusicFactory {
                 .fetch_one(&mut *conn)
                 .await
             {
-                match ref_one.t.as_str() {
+                match music_list_one.t.as_str() {
                     kuwo::KUWO => {
                         if let Ok(music) = KuwoMusic::from_row(data_result, id) {
                             music_indexs.push((music, index_));
@@ -487,25 +467,25 @@ impl SqlMusicFactory {
 
     // 更改自定义歌单中音乐的默认使用的源
     pub async fn change_music_default_source(
-        reference_table: &MusicList,
-        indexs: Vec<i64>,
+        &self,
+        music_list: &MusicList,
+        ids: Vec<i64>,
         default_sources: Vec<String>,
-        pool: &AnyPool,
     ) -> Result<(), anyhow::Error> {
-        if indexs.len() != default_sources.len() {
+        if ids.len() != default_sources.len() {
             return Err(anyhow::Error::msg(
                 "Index and default_sources length mismatch",
             ));
         }
 
-        let mut conn = pool.acquire().await?;
+        let mut conn = self.pool.acquire().await?;
         let mut tx = conn.begin().await?;
 
-        for (index, default_source) in indexs.into_iter().zip(default_sources.into_iter()) {
+        for (id, default_source) in ids.into_iter().zip(default_sources.into_iter()) {
             let update_query = Query::update()
-                .table(StringIden(reference_table.name.to_string()))
+                .table(StringIden(music_list.name.to_string()))
                 .value(DEFAULTSOURCE, default_source)
-                .and_where(Expr::col(INDEX).eq(index))
+                .and_where(Expr::col(ID).eq(id))
                 .to_owned();
 
             let (update_sql, update_values) = build_sqlx_query(update_query).await?;
@@ -522,11 +502,8 @@ impl SqlMusicFactory {
     //// 只允许对音乐数据进行获取,修改,清理未被引用的音乐数据,不可手动删除
 
     // 读取所有音乐数据
-    pub async fn read_music_data(
-        source: &str,
-        pool: &AnyPool,
-    ) -> Result<Vec<Music>, anyhow::Error> {
-        let mut conn = pool.acquire().await?;
+    pub async fn read_music_data(&self, source: &str) -> Result<Vec<Music>, anyhow::Error> {
+        let mut conn = self.pool.acquire().await?;
         let query = Query::select()
             .from(StringIden(source.to_string()))
             .column(Asterisk)
@@ -552,15 +529,15 @@ impl SqlMusicFactory {
 
     // 更改音乐数据信息
     pub async fn change_music_data(
+        &self,
         musics: Vec<&Music>,
         infos: Vec<MusicInfo>,
-        pool: &AnyPool,
     ) -> Result<(), anyhow::Error> {
         if musics.len() != infos.len() {
             return Err(anyhow::Error::msg("Musics and infos length mismatch"));
         }
 
-        let mut conn = pool.acquire().await?;
+        let mut conn = self.pool.acquire().await?;
         let mut tx = conn.begin().await?;
 
         for (music, info) in musics.into_iter().zip(infos.into_iter()) {
@@ -583,9 +560,9 @@ impl SqlMusicFactory {
     }
 
     // 清理未被引用的音乐数据
-    pub async fn clean_unused_music_data(pool: &AnyPool) -> Result<(), anyhow::Error> {
+    pub async fn clean_unused_music_data(&self) -> Result<(), anyhow::Error> {
         // 该函数由于目前只有KuWo，故仅考虑一种特点情况，后续需要随音乐源更新
-        let mut conn = pool.acquire().await?;
+        let mut conn = self.pool.acquire().await?;
         let mut tx = conn.begin().await?;
 
         // 获取所有KuWo音乐数据的ID
@@ -605,9 +582,9 @@ impl SqlMusicFactory {
             .from(REFMETADATA)
             .columns(vec![REFNAME])
             .clone();
-        let (ref_sql, ref_values) = build_sqlx_query(music_lists_query).await?;
+        let (music_list_sql, music_list_values) = build_sqlx_query(music_lists_query).await?;
 
-        let lists_results = sqlx::query_with(&ref_sql, ref_values)
+        let lists_results = sqlx::query_with(&music_list_sql, music_list_values)
             .fetch_all(&mut *tx)
             .await?;
         let mut list_names: Vec<String> = Vec::new();
@@ -621,22 +598,20 @@ impl SqlMusicFactory {
         });
         let mut used_ids: Vec<String> = Vec::new();
         for list_name in list_names.into_iter() {
-            let music_list_refs_query = Query::select()
+            let refs_query = Query::select()
                 .from(StringIden(list_name))
                 .column(REFS)
                 .to_owned();
-            let (music_list_refs_sql, music_list_refs_values) =
-                build_sqlx_query(music_list_refs_query).await?;
-            let music_list_refs_results =
-                sqlx::query_with(&music_list_refs_sql, music_list_refs_values)
-                    .fetch_all(&mut *tx)
-                    .await?;
-            for result in music_list_refs_results {
+            let (ref_sql, ref_values) = build_sqlx_query(refs_query).await?;
+            let music_list_results = sqlx::query_with(&ref_sql, ref_values)
+                .fetch_all(&mut *tx)
+                .await?;
+            for result in music_list_results {
                 let refs: String = result.try_get(REFS.0)?;
-                let ref_data: Vec<Ref> = serde_json::from_str(&refs)?;
-                for ref_ in ref_data {
-                    if ref_.t == KUWO {
-                        used_ids.push(ref_.v);
+                let music_list_data: Vec<Ref> = serde_json::from_str(&refs)?;
+                for music_list_ in music_list_data {
+                    if music_list_.t == KUWO {
+                        used_ids.push(music_list_.v);
                     }
                 }
             }
@@ -663,9 +638,9 @@ impl SqlMusicFactory {
 
     /// 数据库操作
     // 数据储存初始化创建表
-    pub async fn init_create_table(pool: &AnyPool) -> Result<(), anyhow::Error> {
-        Self::create_music_data_table(pool).await?;
-        Self::create_music_list_metadata_table(pool).await?;
+    pub async fn init_create_table(&self) -> Result<(), anyhow::Error> {
+        self.create_music_data_table().await?;
+        self.create_music_list_metadata_table().await?;
 
         Ok(())
     }
@@ -683,7 +658,7 @@ mod tests {
 
     async fn setup_db() -> AnyPool {
         install_default_drivers();
-        let path = PathBuf::from("test.db");
+        let path = PathBuf::from("_data/test.db");
         // if path.exists() {
         //     remove_file(path.clone()).await.unwrap();
         // }
@@ -697,9 +672,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_create_pre_table() {
+    async fn test_init_table() {
         let pool = setup_db().await;
-        SqlMusicFactory::init_create_table(&pool).await.unwrap();
+        let factory = SqlMusicFactory::new(pool);
+        factory.init_create_table().await.unwrap();
     }
 
     #[tokio::test]
@@ -710,7 +686,9 @@ mod tests {
             art_pic: "".to_string(),
             desc: "for test".to_string(),
         };
-        SqlMusicFactory::create_music_list_table(&vec![test_music_list], &pool)
+        let factory = SqlMusicFactory::new(pool);
+        factory
+            .create_music_list_table(&vec![test_music_list])
             .await
             .unwrap();
     }
@@ -731,20 +709,24 @@ mod tests {
         for music in musics.iter() {
             musics_.push(&music)
         }
-        SqlMusicFactory::insert_music(&test_music_list, &musics_, &pool)
+        let factory = SqlMusicFactory::new(pool);
+        factory
+            .insert_music(&test_music_list, &musics_)
             .await
             .unwrap();
     }
 
     #[tokio::test]
-    async fn test_del_ref_index() {
+    async fn test_del_music_index() {
         let pool = setup_db().await;
         let test_music_list: MusicList = MusicList {
             name: "test_ref".to_string(),
             art_pic: "".to_string(),
             desc: "for test".to_string(),
         };
-        SqlMusicFactory::del_music(&test_music_list, (&[1, 3, 4]).to_vec(), &pool)
+        let factory = SqlMusicFactory::new(pool);
+        factory
+            .del_music(&test_music_list, (&[1, 3, 4]).to_vec())
             .await
             .unwrap();
     }
@@ -752,9 +734,8 @@ mod tests {
     #[tokio::test]
     async fn test_clean() {
         let pool = setup_db().await;
-        SqlMusicFactory::clean_unused_music_data(&pool)
-            .await
-            .unwrap();
+        let factory = SqlMusicFactory::new(pool);
+        factory.clean_unused_music_data().await.unwrap();
     }
 
     #[tokio::test]
@@ -765,7 +746,9 @@ mod tests {
             art_pic: "".to_string(),
             desc: "for test".to_string(),
         };
-        SqlMusicFactory::del_music_list_table(&vec![test_music_list], &pool)
+        let factory = SqlMusicFactory::new(pool);
+        factory
+            .del_music_list_table(&vec![test_music_list])
             .await
             .unwrap();
     }
@@ -783,13 +766,11 @@ mod tests {
             art_pic: "".to_string(),
             desc: "".to_string(),
         };
-        SqlMusicFactory::change_ref_metadata(
-            &vec![test_music_list],
-            &vec![new_test_music_list],
-            &pool,
-        )
-        .await
-        .unwrap();
+        let factory = SqlMusicFactory::new(pool);
+        factory
+            .change_music_list_metadata(&vec![test_music_list], &vec![new_test_music_list])
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
@@ -801,9 +782,8 @@ mod tests {
             art_pic: "".to_string(),
             desc: "for test".to_string(),
         };
-        let musics = SqlMusicFactory::read_music(&test_music_list, &pool)
-            .await
-            .unwrap();
+        let factory = SqlMusicFactory::new(pool);
+        let musics = factory.read_music(&test_music_list).await.unwrap();
         println!("{}", musics.len());
         musics.iter().for_each(|music| {
             let info = music.get_music_info();
@@ -819,7 +799,8 @@ mod tests {
         let start_time = Instant::now(); // 记录开始时间
         let pool = setup_db().await;
         let name = kuwo::KUWO;
-        let musics = SqlMusicFactory::read_music_data(name, &pool).await.unwrap();
+        let factory = SqlMusicFactory::new(pool);
+        let musics = factory.read_music_data(name).await.unwrap();
         println!("{}", musics.len());
         musics.iter().for_each(|music| {
             let info = music.get_music_info();
@@ -840,20 +821,18 @@ mod tests {
             art_pic: "".to_string(),
             desc: "for test".to_string(),
         };
-        let musics: Vec<Music> = SqlMusicFactory::read_music(&test_music_list, &pool)
-            .await
-            .unwrap();
+        let factory = SqlMusicFactory::new(pool);
+        let musics: Vec<Music> = factory.read_music(&test_music_list).await.unwrap();
         musics
             .iter()
             .for_each(|m| println!("{}", m.get_music_info()));
         // 生成新的顺序索引
         let new_order: Vec<i64> = (0..musics.len() as i64).rev().collect();
-        SqlMusicFactory::reorder_music(&test_music_list, new_order, &musics, &pool)
+        factory
+            .reorder_music(&test_music_list, new_order, &musics)
             .await
             .unwrap();
-        let musics: Vec<Music> = SqlMusicFactory::read_music(&test_music_list, &pool)
-            .await
-            .unwrap();
+        let musics: Vec<Music> = factory.read_music(&test_music_list).await.unwrap();
         musics
             .iter()
             .for_each(|m| println!("{}", m.get_music_info()));
