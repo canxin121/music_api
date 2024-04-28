@@ -829,7 +829,11 @@ mod tests {
         // 生成新的顺序索引
         let new_order: Vec<i64> = (0..musics.len() as i64).rev().collect();
         factory
-            .reorder_music(&test_music_list, new_order, &musics)
+            .reorder_music(
+                &test_music_list,
+                new_order,
+                &musics.iter().map(|m| &m as &Music).collect(),
+            )
             .await
             .unwrap();
         let musics: Vec<Music> = factory.read_music(&test_music_list).await.unwrap();

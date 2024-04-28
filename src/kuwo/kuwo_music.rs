@@ -6,10 +6,10 @@ use sqlx::{any::AnyRow, Row as _};
 use crate::{
     sql_store_actory::SqlFactoryStore,
     util::{StrIden, StringIden},
-    Music, MusicInfo, MusicInfoTrait, MusicTrait, Store,
+    Music, MusicInfo, MusicInfoTrait, MusicTrait, Quality, Store,
 };
 
-use super::{kuwo_quality::Quality, KUWO};
+use super::{kuwo_quality::KuWoQuality, KUWO};
 
 pub const ALBUM: &str = "Album";
 pub const ALBUM_ID: &str = "Albumid";
@@ -62,10 +62,10 @@ pub struct KuwoMusic {
     pub(crate) duration: String,
 
     #[serde(default)]
-    pub(crate) quality: Vec<Quality>,
+    pub(crate) quality: Vec<KuWoQuality>,
 
     #[serde(default)]
-    pub(crate) default_quality: Quality,
+    pub(crate) default_quality: KuWoQuality,
 
     #[serde(default)]
     pub(crate) pic: String,
@@ -95,12 +95,12 @@ impl SqlFactoryStore for KuwoMusic {
             minfo: String::with_capacity(0),
             n_minfo: String::with_capacity(0),
             duration: row.try_get(DURATION).unwrap_or_default(),
-            quality: serde_json::from_str::<Vec<Quality>>(&row.try_get::<String, _>(QUALITY)?)
+            quality: serde_json::from_str::<Vec<KuWoQuality>>(&row.try_get::<String, _>(QUALITY)?)
                 .unwrap_or_default(),
             pic: row.try_get(PIC).unwrap_or_default(),
             lyric: row.try_get(LYRIC).unwrap_or_default(),
             id: index,
-            default_quality: serde_json::from_str::<Quality>(
+            default_quality: serde_json::from_str::<KuWoQuality>(
                 &row.try_get::<String, _>(DEFAULT_QUALITY)?,
             )
             .unwrap_or_default(),
@@ -150,8 +150,20 @@ impl MusicInfoTrait for KuwoMusic {
             qualities: self
                 .quality
                 .iter()
-                .map(|quality| format!("{}k{}", quality.bitrate, quality.format))
-                .collect::<Vec<String>>(),
+                .map(|quality| Quality {
+                    level: quality.level.clone(),
+                    bitrate: {
+                        if (quality.bitrate != 0) {
+                            Some(quality.bitrate)
+                        } else {
+                            None
+                        }
+                    },
+                    format: Some(quality.format.clone()),
+                    size: Some(quality.size.clone()),
+                    short: format!("{}k{}", quality.bitrate, quality.format),
+                })
+                .collect::<Vec<Quality>>(),
             art_pic: {
                 if self.pic.is_empty() {
                     None
@@ -167,10 +179,19 @@ impl MusicInfoTrait for KuwoMusic {
                 }
             },
             id: self.id,
-            default_quality: Some(format!(
-                "{}k{}",
-                self.default_quality.bitrate, self.default_quality.format
-            )),
+            default_quality: Some(Quality {
+                level: self.default_quality.level.clone(),
+                bitrate: match self.default_quality.bitrate {
+                    0 => None,
+                    _ => Some(self.default_quality.bitrate),
+                },
+                format: Some(self.default_quality.format.clone()),
+                size: Some(self.default_quality.format.clone()),
+                short: format!(
+                    "{}k{}",
+                    self.default_quality.bitrate, self.default_quality.format
+                ),
+            }),
         }
     }
 
@@ -183,7 +204,7 @@ impl MusicInfoTrait for KuwoMusic {
         )
         .unwrap()
     }
-    
+
     fn get_music_id(&self) -> i64 {
         self.id
     }

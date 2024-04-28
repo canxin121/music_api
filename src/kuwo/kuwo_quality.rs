@@ -1,15 +1,15 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Default)]
-#[derive(Clone)]
-pub struct Quality {
+#[derive(Clone, Serialize, Deserialize, Debug, Default)]
+pub struct KuWoQuality {
     pub(crate) level: String,
     pub(crate) bitrate: u32,
     pub(crate) format: String,
     pub(crate) size: String,
 }
-impl Quality {
-    pub(crate) fn parse_quality(input: &str) -> Vec<Quality> {
+
+impl KuWoQuality {
+    pub(crate) fn parse_quality(input: &str) -> Vec<KuWoQuality> {
         input
             .split(';')
             .map(|s| {
@@ -17,7 +17,7 @@ impl Quality {
                     .split(',')
                     .map(|kv| kv.split(':').nth(1).unwrap_or_default())
                     .collect();
-                Quality {
+                KuWoQuality {
                     level: parts[0].to_string(),
                     bitrate: parts[1].parse().unwrap_or_default(),
                     format: parts[2].to_string(),
@@ -27,7 +27,7 @@ impl Quality {
             .collect()
     }
 }
-pub(crate) fn process_qualities(qualities: Vec<Quality>) -> Vec<Quality> {
+pub(crate) fn process_qualities(qualities: Vec<KuWoQuality>) -> Vec<KuWoQuality> {
     let mut unique_qualities = qualities
         .into_iter()
         .filter(|q| q.format != "mflac" && q.format != "zp" && q.format != "ogg")

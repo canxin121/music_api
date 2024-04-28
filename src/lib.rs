@@ -12,6 +12,15 @@ pub mod util;
 pub use music_list::MusicList;
 pub use sqlx::any::install_default_drivers;
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Quality {
+    pub short: String,
+    pub level: String,
+    pub bitrate: Option<u32>,
+    pub format: Option<String>,
+    pub size: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MusicInfo {
     pub id: i64,
@@ -20,8 +29,8 @@ pub struct MusicInfo {
     pub artist: Vec<String>,
     pub duration: Option<u32>,
     pub album: Option<String>,
-    pub qualities: Vec<String>,
-    pub default_quality: Option<String>,
+    pub qualities: Vec<Quality>,
+    pub default_quality: Option<Quality>,
     pub art_pic: Option<String>,
     pub lyric: Option<String>,
 }

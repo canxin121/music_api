@@ -7,7 +7,7 @@ use crate::{
     Music, SearchTrait,
 };
 
-use super::{kuwo_music::KuwoMusic, kuwo_pic::get_pic_url, kuwo_quality::Quality, KUWO};
+use super::{kuwo_music::KuwoMusic, kuwo_pic::get_pic_url, kuwo_quality::KuWoQuality, KUWO};
 
 #[derive(Serialize, Deserialize)]
 pub struct SearchResult {
@@ -33,8 +33,8 @@ impl SearchTrait for KuwoSearch {
                     get_pic_url(&music.music_rid),
                     get_lrc(&music.music_rid),
                     async {
-                        let mut qualities: Vec<Quality> = Quality::parse_quality(&music.minfo);
-                        qualities.append(&mut Quality::parse_quality(&music.n_minfo));
+                        let mut qualities: Vec<KuWoQuality> = KuWoQuality::parse_quality(&music.minfo);
+                        qualities.append(&mut KuWoQuality::parse_quality(&music.n_minfo));
                         qualities = process_qualities(qualities);
                         qualities
                     }
