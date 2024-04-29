@@ -151,7 +151,7 @@ impl MusicInfoTrait for KuwoMusic {
                 .quality
                 .iter()
                 .map(|quality| Quality {
-                    level: quality.level.clone(),
+                    level: Some(quality.level.clone()),
                     bitrate: {
                         if (quality.bitrate != 0) {
                             Some(quality.bitrate)
@@ -180,7 +180,7 @@ impl MusicInfoTrait for KuwoMusic {
             },
             id: self.id,
             default_quality: Some(Quality {
-                level: self.default_quality.level.clone(),
+                level: Some(self.default_quality.level.clone()),
                 bitrate: match self.default_quality.bitrate {
                     0 => None,
                     _ => Some(self.default_quality.bitrate),
@@ -198,13 +198,9 @@ impl MusicInfoTrait for KuwoMusic {
     fn source(&self) -> &'static str {
         KUWO
     }
-    fn get_extra_into(&self, quality: &str) -> String {
-        serde_json::to_string(
-            &json!({"source":self.source(),"music_rid":self.music_rid,"quality":quality}),
-        )
-        .unwrap()
+    fn get_extra_into(&self, quality: &Quality) -> String {
+        serde_json::to_string(&json!({"music_rid":self.music_rid,"quality":quality})).unwrap()
     }
-
     fn get_music_id(&self) -> i64 {
         self.id
     }

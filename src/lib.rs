@@ -15,7 +15,7 @@ pub use sqlx::any::install_default_drivers;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Quality {
     pub short: String,
-    pub level: String,
+    pub level: Option<String>,
     pub bitrate: Option<u32>,
     pub format: Option<String>,
     pub size: Option<String>,
@@ -56,7 +56,7 @@ pub trait MusicInfoTrait {
     fn source(&self) -> &'static str;
     fn get_music_id(&self) -> i64;
     fn get_music_info(&self) -> MusicInfo;
-    fn get_extra_into(&self, quality: &str) -> String;
+    fn get_extra_into(&self, quality: &Quality) -> String;
     // unique kv
     fn get_primary_kv(&self) -> (String, String);
 }
