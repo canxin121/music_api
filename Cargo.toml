@@ -14,7 +14,7 @@ reqwest = { version = "0.12.4", features = [
     "rustls-tls",
     "rustls-tls-webpki-roots",
 ], default-features = false }
-sea-orm = { versios = "0.12.15", default-features = false }
+sea-orm = { versios = "0.12.15" }
 sea-query = { version = "0.30.7" }
 sea-query-binder = { version = "0.5.0", features = ["sqlx-any", "sqlx-sqlite"] }
 serde = { version = "1.0.198", features = ["derive"] }
