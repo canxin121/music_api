@@ -1,5 +1,5 @@
 use lazy_static::lazy_static;
-use sea_orm::Iden;
+use sea_query::Iden;
 use sea_query::{
     MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SchemaBuilder, SchemaStatementBuilder,
     SqliteQueryBuilder,

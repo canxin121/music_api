@@ -153,7 +153,7 @@ impl MusicInfoTrait for KuwoMusic {
                 .map(|quality| Quality {
                     level: Some(quality.level.clone()),
                     bitrate: {
-                        if (quality.bitrate != 0) {
+                        if quality.bitrate != 0 {
                             Some(quality.bitrate)
                         } else {
                             None
