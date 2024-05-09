@@ -696,7 +696,7 @@ mod tests {
     #[tokio::test]
     async fn test_insert_ref() {
         let pool = setup_db().await;
-        let musics: Vec<Music> = KuwoSearch {}.search("张惠妹", 3, 30).await.unwrap();
+        let musics: Vec<Music> = KuwoSearch {}.search_song("张惠妹", 3, 30).await.unwrap();
         musics.iter().for_each(|m| {
             println!("{}", m.get_music_info());
         });

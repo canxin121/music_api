@@ -42,3 +42,22 @@ pub(crate) fn process_qualities(qualities: Vec<KuWoQuality>) -> Vec<KuWoQuality>
 
     unique_qualities
 }
+pub fn gen_minfo_from_formats(raw: &str) -> String {
+    let mut format = String::new();
+    if raw.contains("HIRFLAC") {
+        format += "level:hr,bitrate:4000,format:flac,size:unknown;"
+    }
+    if raw.contains("ALFLAC") {
+        format += "level:ff,bitrate:2000,format:flac,size:unknown;";
+    }
+    if raw.contains("MP3128") {
+        format += "level:h,bitrate:128,format:mp3,size:unknown;";
+    }
+    if raw.contains("MP3H") {
+        format += "level:p,bitrate:320,format:mp3,size:unknown;";
+    }
+    if !format.is_empty() {
+        format.pop();
+    }
+    format
+}

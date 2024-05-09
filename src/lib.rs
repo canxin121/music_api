@@ -1,6 +1,7 @@
 pub use crate::kuwo::kuwo_search::KuwoSearch;
 use sea_query::{InsertStatement, UpdateStatement};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::fmt::Display;
 
 pub mod kuwo;
@@ -53,10 +54,15 @@ impl Display for MusicInfo {
 }
 
 pub trait MusicInfoTrait {
+    // 常量用于区分音乐源
     fn source(&self) -> &'static str;
+    // 此处的id为自定义歌单中的id，这里是借由构造时传入的,只需储存后返回
     fn get_music_id(&self) -> i64;
+    // 获取音乐的信息
     fn get_music_info(&self) -> MusicInfo;
+    // 获取额外的信息
     fn get_extra_into(&self, quality: &Quality) -> String;
+    fn get_album_info(&self) -> Value;
     // unique kv
     fn get_primary_kv(&self) -> (String, String);
 }
@@ -67,11 +73,16 @@ pub type Music = Box<dyn MusicTrait + Send + Sync>;
 
 pub trait SearchTrait {
     fn source_name(&self) -> String;
-    fn search(
+
+    fn search_song(
         &self,
         content: &str,
         page: u32,
         limit: u32,
+    ) -> impl std::future::Future<Output = Result<Vec<Music>, anyhow::Error>> + Send;
+
+    fn search_album(
+        &self,
     ) -> impl std::future::Future<Output = Result<Vec<Music>, anyhow::Error>> + Send;
 }
 

@@ -31,25 +31,32 @@ pub struct SearchResult {
 
 #[derive(Serialize, Deserialize)]
 pub struct KuwoMusic {
+    #[serde(alias = "album")]
     #[serde(rename = "ALBUM")]
     pub(crate) album: String,
 
+    #[serde(alias = "albumid")]
     #[serde(rename = "ALBUMID")]
     pub(crate) album_id: String,
 
     #[serde(rename = "ARTIST")]
+    #[serde(alias = "artist")]
     pub(crate) artist: String,
 
+    #[serde(alias = "artistid")]
     #[serde(rename = "ARTISTID")]
     pub(crate) artist_id: String,
 
     #[serde(rename = "FORMAT")]
+    #[serde(default)]
     pub(crate) format: String,
 
     #[serde(rename = "SONGNAME")]
+    #[serde(alias = "name")]
     pub(crate) song_name: String,
 
     #[serde(rename = "MUSICRID")]
+    #[serde(alias = "id")]
     pub(crate) music_rid: String,
 
     #[serde(rename = "MINFO", default)]
@@ -59,6 +66,7 @@ pub struct KuwoMusic {
     pub(crate) n_minfo: String,
 
     #[serde(rename = "DURATION")]
+    #[serde(alias = "duration")]
     pub(crate) duration: String,
 
     #[serde(default)]
@@ -73,7 +81,7 @@ pub struct KuwoMusic {
     #[serde(default)]
     pub(crate) lyric: String,
 
-    // 注意这个id标志的是其在某引用歌单中的主键的值
+    // 注意这个id标志的是其在某自定义歌单中的主键的值
     #[serde(default)]
     pub(crate) id: i64,
 }
@@ -203,6 +211,9 @@ impl MusicInfoTrait for KuwoMusic {
     }
     fn get_music_id(&self) -> i64 {
         self.id
+    }
+    fn get_album_info(&self) -> serde_json::Value {
+        json!({"album_id":self.album_id,"album":self.album})
     }
 }
 

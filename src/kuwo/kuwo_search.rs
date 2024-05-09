@@ -17,7 +17,7 @@ pub struct SearchResult {
 pub struct KuwoSearch {}
 
 impl SearchTrait for KuwoSearch {
-    async fn search(
+    async fn search_song(
         &self,
         content: &str,
         page: u32,
@@ -33,7 +33,8 @@ impl SearchTrait for KuwoSearch {
                     get_pic_url(&music.music_rid),
                     get_lrc(&music.music_rid),
                     async {
-                        let mut qualities: Vec<KuWoQuality> = KuWoQuality::parse_quality(&music.minfo);
+                        let mut qualities: Vec<KuWoQuality> =
+                            KuWoQuality::parse_quality(&music.minfo);
                         qualities.append(&mut KuWoQuality::parse_quality(&music.n_minfo));
                         qualities = process_qualities(qualities);
                         qualities
@@ -78,6 +79,10 @@ impl SearchTrait for KuwoSearch {
 
     fn source_name(&self) -> String {
         KUWO.to_string()
+    }
+
+    async fn search_album(&self) -> Result<Vec<Music>, anyhow::Error> {
+        todo!()
     }
 }
 
