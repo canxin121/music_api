@@ -1,11 +1,13 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tokio::try_join;
 
 use crate::{Music, MusicList};
 
 use super::{
     kuwo_lyric::get_lrc,
     kuwo_music::KuwoMusic,
+    kuwo_music_info::get_music_info,
     kuwo_quality::{gen_minfo_from_formats, process_qualities, KuWoQuality},
 };
 
@@ -63,9 +65,10 @@ pub async fn get_all_album_music(payload: Value) -> Result<(MusicList, Vec<Music
             let album = album.to_string();
             let album_id = album_id.to_string();
             let artist = result.artist.to_string().replace("&nbsp;", " ");
-            let pic = result.img.to_string();
             async move {
-                let lrc = get_lrc(&m.id).await.map_err(|e| anyhow::anyhow!(e))?;
+                let (lrc_result, detail_info_result) =
+                    try_join!(get_lrc(&m.id), get_music_info(&m.id))?;
+
                 let raw_quality = gen_minfo_from_formats(&m.formats);
                 let mut qualities: Vec<KuWoQuality> = KuWoQuality::parse_quality(&raw_quality);
                 qualities = process_qualities(qualities);
@@ -83,11 +86,11 @@ pub async fn get_all_album_music(payload: Value) -> Result<(MusicList, Vec<Music
                     music_rid: m.id,
                     minfo: raw_quality,
                     n_minfo: String::with_capacity(0),
-                    duration: String::with_capacity(0),
+                    duration: detail_info_result.duration,
                     quality: qualities,
                     default_quality: default_quality,
-                    pic,
-                    lyric: lrc,
+                    pic: detail_info_result.img,
+                    lyric: lrc_result,
                     id: 0,
                 };
                 Ok::<_, anyhow::Error>(Box::new(music) as Music)

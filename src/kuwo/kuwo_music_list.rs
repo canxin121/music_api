@@ -1,5 +1,6 @@
 use futures::stream::{self, StreamExt};
 use std::str::FromStr;
+use tokio::try_join;
 
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -10,6 +11,7 @@ use crate::{Music, MusicList};
 use super::{
     kuwo_lyric::get_lrc,
     kuwo_music::KuwoMusic,
+    kuwo_music_info::get_music_info,
     kuwo_quality::{process_qualities, KuWoQuality},
 };
 
@@ -75,12 +77,14 @@ pub async fn get_musics_of_music_list(
     let result: GetMusicsResult = reqwest::get(url).await?.json().await?;
 
     let music_futures = result.musiclist.into_iter().map(|mut music| async move {
-        let lyric = get_lrc(&music.music_rid).await.unwrap_or_default();
+        let (lyric, detail_info) =
+            try_join!(get_lrc(&music.music_rid), get_music_info(&music.music_rid))?;
         let qualities = process_qualities(KuWoQuality::parse_quality(&music.minfo));
         let default_quality = qualities.first().cloned().unwrap_or_default();
         music.quality = qualities;
         music.default_quality = default_quality;
         music.lyric = lyric;
+        music.pic = detail_info.img;
         Ok(Box::new(music) as Music)
     });
 
