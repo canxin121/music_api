@@ -46,8 +46,8 @@ pub async fn get_all_album_music(payload: Value) -> Result<(MusicList, Vec<Music
     let url = gen_album_url(album_id, 0, 999);
     let text = reqwest::get(&url).await?.text().await?.replace("'", "\"");
     let mut result = serde_json::from_str::<SearchResult>(&text)?;
-    result.name = result.name.replace("&nbsp", " ");
-    result.artist = result.artist.replace("&nbsp", " ");
+    result.name = result.name.replace("&nbsp;", " ");
+    result.artist = result.artist.replace("&nbsp;", " ");
     result.info = result.info.replace("&nbsp;", " ");
 
     let music_list = MusicList {
