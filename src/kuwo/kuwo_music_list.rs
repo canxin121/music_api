@@ -43,9 +43,9 @@ pub async fn search_music_list(
             (
                 json!({"playlist_id":m.playlistid}).to_string(),
                 MusicList {
-                    name: m.name,
+                    name: m.name.replace("&nbsp", " "),
                     art_pic: m.pic,
-                    desc: m.intro,
+                    desc: m.intro.replace("&nbsp", " "),
                 },
             )
         })
