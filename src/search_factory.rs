@@ -13,9 +13,14 @@ impl SearchFactory {
         }
     }
 
-    pub async fn search_album(music: &Music) -> Result<(MusicList, Vec<Music>), anyhow::Error> {
+    pub async fn search_album(
+        music: &Music,
+        page: u32,
+    ) -> Result<(MusicList, Vec<Music>), anyhow::Error> {
         match music.source() {
-            kuwo::KUWO => Ok(kuwo::kuwo_album::get_all_album_music(music.get_album_info()).await?),
+            kuwo::KUWO => {
+                Ok(kuwo::kuwo_album::get_music_album(music.get_album_info(), page).await?)
+            }
             _ => Err(anyhow::anyhow!("Not Supported Source")),
         }
     }
@@ -72,7 +77,7 @@ async fn test_album() {
         music.get_music_info().name,
         music.get_music_info().album.unwrap()
     );
-    let (musiclist, album_musics) = SearchFactory::search_album(music).await.unwrap();
+    let (musiclist, album_musics) = SearchFactory::search_album(music, 1).await.unwrap();
     println!(
         "{},{},{}",
         musiclist.name, musiclist.desc, musiclist.art_pic

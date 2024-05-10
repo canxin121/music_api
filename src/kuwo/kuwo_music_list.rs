@@ -77,25 +77,32 @@ pub async fn get_musics_of_music_list(
     let result: GetMusicsResult = reqwest::get(url).await?.json().await?;
 
     let music_futures = result.musiclist.into_iter().map(|mut music| async move {
-        let (lyric, detail_info) =
-            try_join!(get_lrc(&music.music_rid), get_music_info(&music.music_rid))?;
-        let qualities = process_qualities(KuWoQuality::parse_quality(&music.minfo));
-        let default_quality = qualities.first().cloned().unwrap_or_default();
-        music.quality = qualities;
-        music.default_quality = default_quality;
-        music.lyric = lyric;
-        music.pic = detail_info.img;
-        Ok(Box::new(music) as Music)
+        match try_join!(get_lrc(&music.music_rid), get_music_info(&music.music_rid)) {
+            Ok((lyric, detail_info)) => {
+                let qualities = process_qualities(KuWoQuality::parse_quality(&music.minfo));
+                let default_quality = qualities.first().cloned().unwrap_or_default();
+                music.quality = qualities;
+                music.default_quality = default_quality;
+                music.lyric = lyric;
+                music.pic = detail_info.img;
+                Ok::<Option<Music>, anyhow::Error>(Some(Box::new(music) as Music))
+            }
+            Err(_) => Ok(None),
+        }
     });
 
-    let musics: Result<Vec<Music>, _> = stream::iter(music_futures)
+    let musics: Vec<Music> = stream::iter(music_futures)
         .buffer_unordered(30)
+        .filter_map(|music_result: Result<Option<Music>, _>| async {
+            match music_result {
+                Ok(Some(music)) => Some(music),
+                _ => None,
+            }
+        })
         .collect::<Vec<_>>()
-        .await
-        .into_iter()
-        .collect();
+        .await;
 
-    musics
+    Ok(musics)
 }
 
 #[test]

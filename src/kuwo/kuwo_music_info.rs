@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct MusicInfoResult {
-    msg: Msg,
+    msg: Vec<Msg>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -27,8 +27,14 @@ pub struct DetailMusicInfo {
 pub async fn get_music_info(music_rid: &str) -> Result<DetailMusicInfo, anyhow::Error> {
     let url = gen_get_music_info_url(music_rid);
     let info: MusicInfoResult = reqwest::get(url).await?.json().await?;
+    let msg = match info.msg.into_iter().next() {
+        Some(msg) => msg,
+        None => {
+            return Err(anyhow::anyhow!("No Msg Found"));
+        }
+    };
     Ok(DetailMusicInfo {
-        img: info.msg.creator.img,
-        duration: info.msg.duration.to_string(),
+        img: msg.creator.img,
+        duration: msg.duration.to_string(),
     })
 }
