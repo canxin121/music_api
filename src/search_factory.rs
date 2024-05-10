@@ -1,4 +1,4 @@
-use crate::{kuwo, KuwoSearch, Music, MusicList, SearchTrait};
+use crate::{kuwo, KuwoSearch, Music, MusicInfo, MusicList, SearchTrait};
 
 pub struct SearchFactory {}
 impl SearchFactory {
@@ -94,7 +94,12 @@ async fn test_music_list() {
     let musics = SearchFactory::get_musics_from_music_list(&kuwo::KUWO, &payload, 1)
         .await
         .unwrap();
-    musics
+    let music_infos = musics
         .iter()
-        .for_each(|m| println!("{}", m.get_music_info()));
+        .map(|m| m.get_music_info())
+        .collect::<Vec<MusicInfo>>();
+    music_infos.iter().for_each(|m| println!("{}", m));
+    // musics
+    //     .iter()
+    //     .for_each(|m| println!("{}", m.get_music_info()));
 }

@@ -1,3 +1,4 @@
+use futures::stream::{self, StreamExt};
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
@@ -6,7 +7,11 @@ use urlencoding::encode;
 
 use crate::{kuwo::KUWO, Music, MusicList};
 
-use super::kuwo_music::KuwoMusic;
+use super::{
+    kuwo_lyric::get_lrc,
+    kuwo_music::KuwoMusic,
+    kuwo_quality::{process_qualities, KuWoQuality},
+};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SearchResult {
@@ -67,7 +72,30 @@ pub async fn get_musics_of_music_list(
         .and_then(|r| r.as_str())
         .ok_or_else(|| anyhow::anyhow!("Invalid payload"))?;
     let url = gen_get_musics_url(playlist_id, page, 30);
-    let result: GetMusicsResult = reqwest::get(url).await?.json().await?;
+    let mut result: GetMusicsResult = reqwest::get(url).await?.json().await?;
+
+    let music_futures = result.musiclist.iter_mut().map(|music| {
+        let music_rid = music.music_rid.clone();
+        async move {
+            music.lyric = get_lrc(&music_rid)
+                .await
+                .unwrap_or(String::with_capacity(0));
+            let mut qualities: Vec<KuWoQuality> = KuWoQuality::parse_quality(&music.minfo);
+            qualities = process_qualities(qualities);
+            let default_quality = qualities.first().unwrap().clone();
+            music.quality = qualities;
+            music.default_quality = default_quality;
+            Result::<(), anyhow::Error>::Ok(())
+        }
+    });
+
+    let _: Vec<_> = stream::iter(music_futures)
+        .buffer_unordered(30)
+        .collect::<Vec<Result<(), anyhow::Error>>>()
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?;
+
     Ok(result
         .musiclist
         .into_iter()
@@ -91,5 +119,10 @@ async fn test_get() {
 
 #[tokio::test]
 async fn test_get_musics() {
-    let musics = get_musics_of_music_list("3452422908", 1).await.unwrap();
+    let musics = get_musics_of_music_list(&json!({"playlist_id":"3452422908"}).to_string(), 1)
+        .await
+        .unwrap();
+    musics.iter().for_each(|m| {
+        println!("{}", m.get_music_info());
+    })
 }

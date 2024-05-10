@@ -22,6 +22,12 @@ pub struct Quality {
     pub size: Option<String>,
 }
 
+impl Display for Quality {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.short)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MusicInfo {
     pub id: i64,
@@ -40,13 +46,13 @@ impl Display for MusicInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Name: {}, Source: {}, Artist: {}, Duration: {:?}, Album: {}, Qualities: {:?}, Art Pic: {:?}, HasLyric: {:?}",
+            "Name: {}, Source: {}, Artist: {}, Duration: {:?}, Album: {}, Qualities: {}, Art Pic: {:?}, HasLyric: {:?}",
             self.name,
             self.source,
             self.artist.join("&"),
             self.duration,
             self.album.as_ref().unwrap_or(&"Unknown".to_string()),
-            self.qualities,
+            self.qualities.iter().map(|i|i.to_string()).collect::<Vec<String>>().join(","),
             self.art_pic.as_ref().unwrap_or(&"None".to_string()),
             self.lyric.is_some()
         )

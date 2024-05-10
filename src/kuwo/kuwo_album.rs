@@ -69,7 +69,10 @@ pub async fn get_all_album_music(payload: Value) -> Result<(MusicList, Vec<Music
                 let raw_quality = gen_minfo_from_formats(&m.formats);
                 let mut qualities: Vec<KuWoQuality> = KuWoQuality::parse_quality(&raw_quality);
                 qualities = process_qualities(qualities);
-
+                if qualities.is_empty() {
+                    return Err(anyhow::anyhow!("No qualities"));
+                }
+                let default_quality = qualities.first().unwrap().clone();
                 let music = KuwoMusic {
                     album,
                     album_id,
@@ -82,7 +85,7 @@ pub async fn get_all_album_music(payload: Value) -> Result<(MusicList, Vec<Music
                     n_minfo: String::with_capacity(0),
                     duration: String::with_capacity(0),
                     quality: qualities,
-                    default_quality: KuWoQuality::default(),
+                    default_quality: default_quality,
                     pic,
                     lyric: lrc,
                     id: 0,
