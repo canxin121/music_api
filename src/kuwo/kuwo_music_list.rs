@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use urlencoding::encode;
 
-use crate::{kuwo::KUWO, Music, MusicList};
+use crate::{Music, MusicList};
 
 use super::{
     kuwo_lyric::get_lrc,
@@ -72,35 +72,26 @@ pub async fn get_musics_of_music_list(
         .and_then(|r| r.as_str())
         .ok_or_else(|| anyhow::anyhow!("Invalid payload"))?;
     let url = gen_get_musics_url(playlist_id, page, 30);
-    let mut result: GetMusicsResult = reqwest::get(url).await?.json().await?;
+    let result: GetMusicsResult = reqwest::get(url).await?.json().await?;
 
-    let music_futures = result.musiclist.iter_mut().map(|music| {
-        let music_rid = music.music_rid.clone();
-        async move {
-            music.lyric = get_lrc(&music_rid)
-                .await
-                .unwrap_or(String::with_capacity(0));
-            let mut qualities: Vec<KuWoQuality> = KuWoQuality::parse_quality(&music.minfo);
-            qualities = process_qualities(qualities);
-            let default_quality = qualities.first().unwrap().clone();
-            music.quality = qualities;
-            music.default_quality = default_quality;
-            Result::<(), anyhow::Error>::Ok(())
-        }
+    let music_futures = result.musiclist.into_iter().map(|mut music| async move {
+        let lyric = get_lrc(&music.music_rid).await.unwrap_or_default();
+        let qualities = process_qualities(KuWoQuality::parse_quality(&music.minfo));
+        let default_quality = qualities.first().cloned().unwrap_or_default();
+        music.quality = qualities;
+        music.default_quality = default_quality;
+        music.lyric = lyric;
+        Ok(Box::new(music) as Music)
     });
 
-    let _: Vec<_> = stream::iter(music_futures)
+    let musics: Result<Vec<Music>, _> = stream::iter(music_futures)
         .buffer_unordered(30)
-        .collect::<Vec<Result<(), anyhow::Error>>>()
+        .collect::<Vec<_>>()
         .await
         .into_iter()
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect();
 
-    Ok(result
-        .musiclist
-        .into_iter()
-        .map(|m| Box::new(m) as Music)
-        .collect())
+    musics
 }
 
 #[test]
