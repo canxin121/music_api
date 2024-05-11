@@ -7,6 +7,7 @@ use serde_json::json;
 use urlencoding::encode;
 
 use crate::search_factory::CLIENT;
+use crate::util::decode_html_entities;
 use crate::{Music, MusicList};
 
 use super::{
@@ -57,9 +58,9 @@ pub async fn search_music_list(
             (
                 json!({"playlist_id":m.playlistid}).to_string(),
                 MusicList {
-                    name: m.name.replace("&nbsp;", " "),
+                    name: decode_html_entities(&m.name),
                     art_pic: m.pic,
-                    desc: m.intro.replace("&nbsp;", " "),
+                    desc: decode_html_entities(&m.intro),
                 },
             )
         })

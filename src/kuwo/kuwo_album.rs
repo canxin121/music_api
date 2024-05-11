@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use futures::future::join;
 use serde_json::Value;
 
-use crate::{search_factory::CLIENT, Music, MusicList};
+use crate::{search_factory::CLIENT, util::decode_html_entities, Music, MusicList};
 
 use super::{
     kuwo_lyric::get_lrc,
@@ -57,10 +57,9 @@ pub async fn get_music_album(
         .await?
         .replace("'", "\"");
     let mut result = serde_json::from_str::<SearchResult>(&text)?;
-    result.name = result.name.replace("&nbsp;", " ");
-    result.artist = result.artist.replace("&nbsp;", " ");
-    result.info = result.info.replace("&nbsp;", " ");
-
+    result.name = decode_html_entities(&result.name);
+    result.artist = decode_html_entities(&result.artist);
+    result.info = decode_html_entities(&result.info);
     let music_list = MusicList {
         name: result.name,
         art_pic: result.img.to_string(),
@@ -73,7 +72,7 @@ pub async fn get_music_album(
         .map(|m| {
             let album = album.to_string();
             let album_id = album_id.to_string();
-            let artist = result.artist.to_string().replace("&nbsp;", " ");
+            let artist = decode_html_entities(&result.artist);
             async move {
                 let (lrc_result, music_info_result) =
                     join(get_lrc(&m.id), get_music_info(&m.id)).await;
@@ -89,7 +88,7 @@ pub async fn get_music_album(
                     artist,
                     artist_id: m.artistid,
                     format: "wma".to_string(),
-                    song_name: m.name.replace("&nbsp;", " "),
+                    song_name: decode_html_entities(&m.name),
                     music_rid: m.id,
                     minfo: raw_quality,
                     n_minfo: String::with_capacity(0),
