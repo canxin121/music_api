@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::util::format_seconds_to_timestamp;
+use crate::{search_factory::CLIENT, util::format_seconds_to_timestamp};
 
 #[derive(Deserialize, Debug)]
 pub struct GerLrcResult {
@@ -27,7 +27,9 @@ pub(crate) fn gen_get_lrc_url(song_id: &str) -> String {
 }
 
 pub(crate) async fn get_lrc(song_id: &str) -> Result<String, anyhow::Error> {
-    let result = reqwest::get(gen_get_lrc_url(song_id))
+    let result = CLIENT
+        .get(gen_get_lrc_url(song_id))
+        .send()
         .await?
         .json::<GerLrcResult>()
         .await?;

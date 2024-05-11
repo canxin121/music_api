@@ -4,6 +4,7 @@ use tokio::task;
 
 use crate::{
     kuwo::{kuwo_lyric::get_lrc, kuwo_quality::process_qualities},
+    search_factory::CLIENT,
     Music, SearchTrait,
 };
 
@@ -24,7 +25,7 @@ impl SearchTrait for KuwoSearch {
         limit: u32,
     ) -> Result<Vec<Music>, anyhow::Error> {
         let url = gen_search_url(content, page, limit);
-        let musics: SearchResult = reqwest::get(&url).await?.json().await?;
+        let musics: SearchResult = CLIENT.get(&url).send().await?.json().await?;
 
         let music_futures = musics.abslist.into_iter().map(|music| {
             task::spawn(async move {

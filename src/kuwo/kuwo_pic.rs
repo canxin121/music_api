@@ -1,3 +1,5 @@
+use crate::search_factory::CLIENT;
+
 fn gen_get_pic_url(music_id: &str) -> String {
     format!(
         "http://artistpicserver.kuwo.cn/pic.web?corp=kuwo&type=rid_pic&pictype=500&size=500&rid={}",
@@ -6,7 +8,9 @@ fn gen_get_pic_url(music_id: &str) -> String {
 }
 
 pub(crate) async fn get_pic_url(music_id: &str) -> Result<String, anyhow::Error> {
-    let url = reqwest::get(gen_get_pic_url(music_id))
+    let url = CLIENT
+        .get(gen_get_pic_url(music_id))
+        .send()
         .await?
         .text()
         .await?;

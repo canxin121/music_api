@@ -1,11 +1,12 @@
+use futures::future::join;
 use futures::stream::{self, StreamExt};
 use std::str::FromStr;
-use tokio::try_join;
 
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use urlencoding::encode;
 
+use crate::search_factory::CLIENT;
 use crate::{Music, MusicList};
 
 use super::{
@@ -41,7 +42,13 @@ pub async fn search_music_list(
     page: u32,
 ) -> Result<Vec<(String, MusicList)>, anyhow::Error> {
     let url = gen_music_list_url(content, page, 30);
-    let text = reqwest::get(&url).await?.text().await?.replace("'", "\"");
+    let text = CLIENT
+        .get(&url)
+        .send()
+        .await?
+        .text()
+        .await?
+        .replace("'", "\"");
     let search_result: SearchResult = serde_json::from_str(&text)?;
     Ok(search_result
         .abslist
@@ -73,26 +80,28 @@ pub async fn get_musics_of_music_list(
         .get("playlist_id")
         .and_then(|r| r.as_str())
         .ok_or_else(|| anyhow::anyhow!("Invalid payload"))?;
-    let url = gen_get_musics_url(playlist_id, page, 30);
-    let result: GetMusicsResult = reqwest::get(url).await?.json().await?;
+    let url = gen_get_musics_url(playlist_id, page, 10000);
+    let result: GetMusicsResult = CLIENT.get(url).send().await?.json().await?;
 
     let music_futures = result.musiclist.into_iter().map(|mut music| async move {
-        match try_join!(get_lrc(&music.music_rid), get_music_info(&music.music_rid)) {
-            Ok((lyric, detail_info)) => {
-                let qualities = process_qualities(KuWoQuality::parse_quality(&music.minfo));
-                let default_quality = qualities.first().cloned().unwrap_or_default();
-                music.quality = qualities;
-                music.default_quality = default_quality;
-                music.lyric = lyric;
-                music.pic = detail_info.img;
-                Ok::<Option<Music>, anyhow::Error>(Some(Box::new(music) as Music))
-            }
-            Err(_) => Ok(None),
+        let (lrc_result, music_info_result) =
+            join(get_lrc(&music.music_rid), get_music_info(&music.music_rid)).await;
+
+        music.lyric = lrc_result.unwrap_or_default();
+        if let Ok(info) = music_info_result {
+            music.pic = info.img;
         }
+
+        let qualities = process_qualities(KuWoQuality::parse_quality(&music.minfo));
+        let default_quality = qualities.first().cloned().unwrap_or_default();
+        music.quality = qualities;
+        music.default_quality = default_quality;
+
+        Ok::<Option<Music>, anyhow::Error>(Some(Box::new(music) as Music))
     });
 
     let musics: Vec<Music> = stream::iter(music_futures)
-        .buffer_unordered(30)
+        .buffer_unordered(1000)
         .filter_map(|music_result: Result<Option<Music>, _>| async {
             match music_result {
                 Ok(Some(music)) => Some(music),
@@ -105,6 +114,16 @@ pub async fn get_musics_of_music_list(
     Ok(musics)
 }
 
+#[tokio::test]
+async fn test_get_musics() {
+    let musics = get_musics_of_music_list(&json!({"playlist_id":"2686672431"}).to_string(), 1)
+        .await
+        .unwrap();
+    musics.iter().for_each(|m| {
+        println!("{}", m.get_music_info());
+    });
+    println!("length:{}", musics.len())
+}
 #[test]
 fn test_url() {
     println!("{}", gen_music_list_url("张惠妹", 1, 30));
@@ -117,14 +136,4 @@ async fn test_get() {
     let url = gen_get_musics_url(&first.0, 1, 30);
     println!("{:#?}", result);
     println!("{}", url);
-}
-
-#[tokio::test]
-async fn test_get_musics() {
-    let musics = get_musics_of_music_list(&json!({"playlist_id":"3452422908"}).to_string(), 1)
-        .await
-        .unwrap();
-    musics.iter().for_each(|m| {
-        println!("{}", m.get_music_info());
-    })
 }

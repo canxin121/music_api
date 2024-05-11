@@ -1,4 +1,16 @@
+use lazy_static::lazy_static;
+use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
+use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
+
 use crate::{kuwo, KuwoSearch, Music, MusicInfo, MusicList, SearchTrait};
+
+lazy_static! {
+    pub static ref CLIENT: ClientWithMiddleware = ClientBuilder::new(reqwest::Client::new())
+        .with(RetryTransientMiddleware::new_with_policy(
+            ExponentialBackoff::builder().build_with_max_retries(3),
+        ))
+        .build();
+}
 
 pub struct SearchFactory {}
 impl SearchFactory {
