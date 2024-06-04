@@ -2,14 +2,19 @@ use lazy_static::lazy_static;
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
 
-use crate::{kuwo, KuwoSearch, Music, MusicInfo, MusicList, SearchTrait};
+use crate::{kuwo, KuwoSearch, Music, MusicList, SearchTrait};
 
 lazy_static! {
-    pub static ref CLIENT: ClientWithMiddleware = ClientBuilder::new(reqwest::Client::new())
-        .with(RetryTransientMiddleware::new_with_policy(
-            ExponentialBackoff::builder().build_with_max_retries(3),
-        ))
-        .build();
+    pub static ref CLIENT: ClientWithMiddleware = ClientBuilder::new(
+        reqwest::Client::builder()
+            .danger_accept_invalid_certs(true)
+            .build()
+            .unwrap()
+    )
+    .with(RetryTransientMiddleware::new_with_policy(
+        ExponentialBackoff::builder().build_with_max_retries(3),
+    ))
+    .build();
 }
 
 pub struct SearchFactory {}
@@ -114,7 +119,7 @@ async fn test_music_list() {
     let music_infos = musics
         .iter()
         .map(|m| m.get_music_info())
-        .collect::<Vec<MusicInfo>>();
+        .collect::<Vec<crate::MusicInfo>>();
     music_infos.iter().for_each(|m| println!("{}", m));
     // musics
     //     .iter()
