@@ -37,7 +37,7 @@ pub struct MusicInfo {
     // 与歌曲/平台本身无关的id，代表的仅仅是其在当前 自定义歌单 中的id
     pub id: i64,
     // 歌曲的来源平台
-    pub source: &'static str,
+    pub source: String,
     // 歌曲的名字
     pub name: String,
     // 歌曲的演唱者的集合
@@ -76,7 +76,7 @@ impl Display for MusicInfo {
 pub trait MusicInfoTrait {
     fn clone_(&self) -> Music;
     // 常量用于区分音乐源
-    fn source(&self) -> &'static str;
+    fn source(&self) -> String;
     // 获取音乐的信息
     fn get_music_info(&self) -> MusicInfo;
     // 获取额外的信息

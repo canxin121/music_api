@@ -35,7 +35,7 @@ impl ObjectSafeStore for WyMusic {
     }
 
     fn to_sql_insert(&self) -> sea_query::InsertStatement {
-        let table_iden = StrIden(self.source()); // 使用全局变量定义的表名
+        let table_iden = StringIden(self.source()); // 使用全局变量定义的表名
         let qualities = self.get_qualities();
         let default_quality = if let Some(quality) = qualities.first() {
             Some(quality.clone())
@@ -85,7 +85,7 @@ impl ObjectSafeStore for WyMusic {
         let (k, v) = self.get_primary_kv();
         let mut binding = Query::update().clone();
         let query = binding
-            .table(StrIden(self.source()))
+            .table(StringIden(self.source()))
             .and_where(Expr::col(StringIden(k.to_string())).eq(v));
         let mut need_update = false;
 
@@ -135,15 +135,15 @@ pub struct AlbumPayload {
 }
 
 impl MusicInfoTrait for WyMusic {
-    fn source(&self) -> &'static str {
-        WANGYI
+    fn source(&self) -> String {
+        WANGYI.to_string()
     }
 
     fn get_music_info(&self) -> crate::MusicInfo {
         let qualities = self.get_qualities();
         MusicInfo {
             id: self.id_,
-            source: WANGYI,
+            source: WANGYI.to_string(),
             name: self.name.to_string(),
             artist: self.ar.iter().map(|a| a.name.clone()).collect(),
             duration: Some(self.dt.try_into().unwrap_or(0) / 1000),

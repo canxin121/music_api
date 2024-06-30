@@ -147,7 +147,7 @@ impl MusicInfoTrait for KuwoMusic {
 
     fn get_music_info(&self) -> crate::MusicInfo {
         crate::MusicInfo {
-            source: KUWO,
+            source: KUWO.to_string(),
             name: self.song_name.clone(),
             artist: self.artist.split("&").map(|a| a.to_string()).collect(),
             duration: {
@@ -205,8 +205,8 @@ impl MusicInfoTrait for KuwoMusic {
         }
     }
 
-    fn source(&self) -> &'static str {
-        KUWO
+    fn source(&self) ->  String {
+        KUWO.to_string()
     }
     fn get_extra_info(&self, quality: &Quality) -> String {
         serde_json::to_string(&json!({"music_rid":self.music_rid,"quality":quality})).unwrap()
@@ -248,7 +248,7 @@ impl ObjectSafeStore for KuwoMusic {
         Ok(serde_json::to_string(&self).unwrap())
     }
     fn to_sql_insert(&self) -> sea_query::InsertStatement {
-        let table_iden = StrIden(self.source());
+        let table_iden = StringIden(self.source());
         let query: sea_query::InsertStatement = Query::insert()
             .into_table(table_iden)
             .columns(vec![
@@ -297,7 +297,7 @@ impl ObjectSafeStore for KuwoMusic {
         let (k, v) = self.get_primary_kv();
         let mut binding = Query::update().clone();
         let query = binding
-            .table(StrIden(self.source()))
+            .table(StringIden(self.source()))
             .and_where(Expr::col(StringIden(k)).eq(v));
         let mut need_update = false;
         if origin.name != info.name {
