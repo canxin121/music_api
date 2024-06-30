@@ -23,26 +23,13 @@ impl MusicFilter for MusicFuzzFilter {
             }
         }
         if !self.artist.is_empty() {
-            let mut artist_flag = false;
-            for artist in &self.artist {
-                for artist_info in &info.artist {
-                    if levenshtein(artist_info, artist) <= 2 {
-                        artist_flag = true;
-                        break;
-                    }
-                }
-                if artist_flag {
-                    break;
-                }
-            }
-            if !artist_flag {
+            if self.artist != info.artist {
                 return false;
             }
         }
         if let Some(album) = &self.album {
             if let Some(albulm_) = info.album.as_ref() {
                 if levenshtein(albulm_, album) > 2 {
-                    // Levenshtein distance threshold
                     return false;
                 }
             } else {

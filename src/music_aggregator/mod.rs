@@ -8,7 +8,7 @@ use futures::Future;
 use crate::{
     filter::{MusicFilter as _, MusicFuzzFilter},
     music_list::MusicList,
-    Music, MusicListInfo,
+    Music,
 };
 
 pub type MusicAggregator = Box<dyn MusicAggregatorTrait + Send + Sync>;

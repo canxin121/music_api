@@ -212,7 +212,7 @@ impl MusicAggregatorTrait for SqlMusicAggregator {
             return Box::pin(async move { Ok(info.lyric.clone().unwrap()) });
         }
         Box::pin(async move {
-            let music = self.get_default_music();
+            let music = self.get_default_music().clone();
             let mut info = music.get_music_info();
             let lyric = music.fetch_lyric().await?;
             info.lyric = Some(lyric.clone());

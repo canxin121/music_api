@@ -1,4 +1,4 @@
-use std::{io::Write as _, mem};
+use std::mem;
 
 use futures::stream::{FuturesUnordered, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use futures::future::join;
 
 use crate::{
-    music_aggregator::{self, music_aggregator_online::SearchMusicAggregator},
+    music_aggregator::music_aggregator_online::SearchMusicAggregator,
     music_list::{MusicList, MusicListTrait},
     platform_integrator::kuwo::util::decode_html_entities,
     util::CLIENT,

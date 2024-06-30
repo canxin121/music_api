@@ -3,7 +3,7 @@ use std::{fmt::Display, pin::Pin};
 use sea_query::{InsertStatement, UpdateStatement};
 use serde::{Deserialize, Serialize};
 
-use crate::{music_list::MusicList, MusicAggregator, MusicListInfo};
+use crate::{music_list::MusicList, MusicAggregator};
 
 pub type Music = Box<dyn MusicTrait + Send + Sync>;
 

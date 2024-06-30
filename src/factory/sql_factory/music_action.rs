@@ -369,7 +369,7 @@ impl SqlFactory {
 
     // 更改音乐数据信息
     pub async fn change_music_info(
-        musics: &[&Music],
+        musics: &[Music],
         new_infos: Vec<MusicInfo>,
     ) -> Result<(), anyhow::Error> {
         if musics.len() != new_infos.len() {
@@ -433,12 +433,9 @@ mod test {
                 )
                 .await
                 .unwrap();
-            aggregator_search
-                .aggregators
-                .iter()
-                .for_each(|aggregator| {
-                    println!("{}", aggregator);
-                });
+            aggregator_search.aggregators.iter().for_each(|aggregator| {
+                println!("{}", aggregator);
+            });
 
             let musiclist_info = MusicListInfo {
                 name: "歌单1".to_string(),
@@ -464,7 +461,7 @@ mod test {
     // 测试替换音乐
     #[tokio::test]
     async fn sql_factory_music_action_test_replace_music() {
-        let (musiclist_info, aggregator_search) = init_test_env!(
+        let (musiclist_info, _aggregator_search) = init_test_env!(
             "sql_factory_music_action_test_get_music.db",
             &[KUWO.to_string()]
         );
@@ -486,14 +483,14 @@ mod test {
     // 测试获取music
     #[tokio::test]
     async fn sql_factory_music_action_test_get_music() {
-        let (musiclist_info, aggregator_search) = init_test_env!(
+        let (musiclist_info, _aggregator_search) = init_test_env!(
             "sql_factory_music_action_test_get_music.db",
             &[ALL.to_string()]
         );
         let musics = SqlFactory::get_all_musics(&musiclist_info).await.unwrap();
         let first = musics.first().unwrap();
         let id = first.get_music_id();
-        let aggregator_ = SqlFactory::get_music_by_id(&musiclist_info, id, &[KUWO])
+        let _aggregator_ = SqlFactory::get_music_by_id(&musiclist_info, id, &[KUWO])
             .await
             .unwrap();
     }
@@ -559,7 +556,7 @@ mod test {
         let mut new_info = first.get_default_music().get_music_info();
         new_info.name = "测试修改".to_string();
         new_info.artist = vec!["测试修改".to_string()];
-        SqlFactory::change_music_info(&[first.get_default_music()], [new_info].to_vec())
+        SqlFactory::change_music_info(&[first.get_default_music().clone()], [new_info].to_vec())
             .await
             .unwrap();
         let musics = SqlFactory::get_all_musics(&musiclist_info).await.unwrap();
@@ -571,7 +568,7 @@ mod test {
     }
     #[tokio::test]
     async fn sql_factory_music_action_test_change_music_default_source() {
-        let (musiclist_info, aggregator_search) = init_test_env!(
+        let (musiclist_info, _aggregator_search) = init_test_env!(
             "sql_factory_music_action_test_change_default_source.db",
             &[ALL.to_string()]
         );
