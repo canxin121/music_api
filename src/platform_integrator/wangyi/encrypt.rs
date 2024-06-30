@@ -1,7 +1,8 @@
 #![allow(unused)]
 use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyInit, KeyIvInit};
 use anyhow::Error;
-use base64::encode as base64_encode;
+use base64::prelude::BASE64_STANDARD;
+use base64::Engine as _;
 use lazy_static::lazy_static;
 use md5::digest::core_api::CoreWrapper;
 use md5::Digest;
@@ -102,7 +103,7 @@ pub fn weapi(data: &str) -> Result<HashMap<&'static str, String>, Error> {
         .expect("Failed to generate a random key");
     // let random_key = b"0CoJUm6Qyw8W8jud";
     let encrypted_once = aes_encrypt(data.as_bytes(), &PRESET_KEY, Some(&IV), AesMode::CBC);
-    let encrypted_once_base64 = base64_encode(&encrypted_once);
+    let encrypted_once_base64 = BASE64_STANDARD.encode(&encrypted_once);
 
     let encrypted_twice = aes_encrypt(
         encrypted_once_base64.as_bytes(),
@@ -111,7 +112,7 @@ pub fn weapi(data: &str) -> Result<HashMap<&'static str, String>, Error> {
         AesMode::CBC,
     );
 
-    let encrypted_twice_base64 = base64_encode(&encrypted_twice);
+    let encrypted_twice_base64 = BASE64_STANDARD.encode(&encrypted_twice);
 
     let mut reversed_key = random_key.to_vec();
     reversed_key.reverse();
