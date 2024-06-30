@@ -1,0 +1,85 @@
+Date : 2024-06-30 19:27:37
+Directory : d:\Git\music_api
+Total : 45 files,  6935 codes, 313 comments, 795 blanks, all 8043 lines
+
+Languages
++----------+------------+------------+------------+------------+------------+
+| language | files      | code       | comment    | blank      | total      |
++----------+------------+------------+------------+------------+------------+
+| Rust     |         42 |      4,571 |        310 |        515 |      5,396 |
+| TOML     |          2 |      2,345 |          3 |        266 |      2,614 |
+| Markdown |          1 |         19 |          0 |         14 |         33 |
++----------+------------+------------+------------+------------+------------+
+
+Directories
++--------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                               | files      | code       | comment    | blank      | total      |
++--------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                  |         45 |      6,935 |        313 |        795 |      8,043 |
+| . (Files)                                                          |          3 |      2,364 |          3 |        280 |      2,647 |
+| examples                                                           |          2 |         76 |         19 |          8 |        103 |
+| src                                                                |         40 |      4,495 |        291 |        507 |      5,293 |
+| src (Files)                                                        |          5 |        273 |         21 |         31 |        325 |
+| src\factory                                                        |         11 |      1,412 |         98 |        166 |      1,676 |
+| src\factory (Files)                                                |          1 |          2 |          0 |          1 |          3 |
+| src\factory\online_factory                                         |          3 |        307 |          1 |         26 |        334 |
+| src\factory\sql_factory                                            |          7 |      1,103 |         97 |        139 |      1,339 |
+| src\music_aggregator                                               |          3 |        615 |         39 |         69 |        723 |
+| src\platform_integrator                                            |         21 |      2,195 |        133 |        241 |      2,569 |
+| src\platform_integrator (Files)                                    |          1 |          5 |          0 |          2 |          7 |
+| src\platform_integrator\kuwo                                       |         10 |        876 |          9 |        112 |        997 |
+| src\platform_integrator\utils                                      |          1 |         25 |          7 |          4 |         36 |
+| src\platform_integrator\wangyi                                     |          9 |      1,289 |        117 |        123 |      1,529 |
++--------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++--------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| filename                                                           | language | code       | comment    | blank      | total      |
++--------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| d:\Git\music_api\Cargo.lock                                        | TOML     |      2,308 |          2 |        263 |      2,573 |
+| d:\Git\music_api\Cargo.toml                                        | TOML     |         37 |          1 |          3 |         41 |
+| d:\Git\music_api\examples\online.rs                                | Rust     |         33 |         10 |          4 |         47 |
+| d:\Git\music_api\examples\sql.rs                                   | Rust     |         43 |          9 |          4 |         56 |
+| d:\Git\music_api\readme.md                                         | Markdown |         19 |          0 |         14 |         33 |
+| d:\Git\music_api\src\factory\mod.rs                                | Rust     |          2 |          0 |          1 |          3 |
+| d:\Git\music_api\src\factory\online_factory\aggregator_search.rs   | Rust     |        197 |          0 |         14 |        211 |
+| d:\Git\music_api\src\factory\online_factory\mod.rs                 | Rust     |          4 |          0 |          3 |          7 |
+| d:\Git\music_api\src\factory\online_factory\musiclist_online.rs    | Rust     |        106 |          1 |          9 |        116 |
+| d:\Git\music_api\src\factory\sql_factory\db_action.rs              | Rust     |        126 |         18 |         18 |        162 |
+| d:\Git\music_api\src\factory\sql_factory\mod.rs                    | Rust     |         37 |         20 |         13 |         70 |
+| d:\Git\music_api\src\factory\sql_factory\music_action.rs           | Rust     |        508 |         33 |         61 |        602 |
+| d:\Git\music_api\src\factory\sql_factory\musicdata_action.rs       | Rust     |        133 |          8 |         14 |        155 |
+| d:\Git\music_api\src\factory\sql_factory\musiclist_action.rs       | Rust     |        272 |         18 |         24 |        314 |
+| d:\Git\music_api\src\factory\sql_factory\sql_musiclist.rs          | Rust     |         27 |          0 |          7 |         34 |
+| d:\Git\music_api\src\factory\sql_factory\util.rs                   | Rust     |          0 |          0 |          2 |          2 |
+| d:\Git\music_api\src\filter.rs                                     | Rust     |         49 |          1 |          5 |         55 |
+| d:\Git\music_api\src\lib.rs                                        | Rust     |         15 |          1 |          2 |         18 |
+| d:\Git\music_api\src\music.rs                                      | Rust     |         84 |         19 |         11 |        114 |
+| d:\Git\music_api\src\music_aggregator\mod.rs                       | Rust     |         76 |         20 |         18 |        114 |
+| d:\Git\music_api\src\music_aggregator\music_aggregator_online.rs   | Rust     |        203 |          3 |         21 |        227 |
+| d:\Git\music_api\src\music_aggregator\music_aggregator_sql.rs      | Rust     |        336 |         16 |         30 |        382 |
+| d:\Git\music_api\src\music_list.rs                                 | Rust     |         49 |          0 |          6 |         55 |
+| d:\Git\music_api\src\platform_integrator\kuwo\kuwo_album.rs        | Rust     |        134 |          0 |         19 |        153 |
+| d:\Git\music_api\src\platform_integrator\kuwo\kuwo_lyric.rs        | Rust     |         49 |          0 |          8 |         57 |
+| d:\Git\music_api\src\platform_integrator\kuwo\kuwo_music.rs        | Rust     |        307 |          3 |         31 |        341 |
+| d:\Git\music_api\src\platform_integrator\kuwo\kuwo_music_info.rs   | Rust     |         36 |          0 |          7 |         43 |
+| d:\Git\music_api\src\platform_integrator\kuwo\kuwo_music_list.rs   | Rust     |        172 |          0 |         23 |        195 |
+| d:\Git\music_api\src\platform_integrator\kuwo\kuwo_pic.rs          | Rust     |         20 |          0 |          3 |         23 |
+| d:\Git\music_api\src\platform_integrator\kuwo\kuwo_quality.rs      | Rust     |         59 |          0 |          5 |         64 |
+| d:\Git\music_api\src\platform_integrator\kuwo\kuwo_search.rs       | Rust     |         70 |          6 |         13 |         89 |
+| d:\Git\music_api\src\platform_integrator\kuwo\mod.rs               | Rust     |         14 |          0 |          2 |         16 |
+| d:\Git\music_api\src\platform_integrator\kuwo\util.rs              | Rust     |         15 |          0 |          1 |         16 |
+| d:\Git\music_api\src\platform_integrator\mod.rs                    | Rust     |          5 |          0 |          2 |          7 |
+| d:\Git\music_api\src\platform_integrator\utils\mod.rs              | Rust     |         25 |          7 |          4 |         36 |
+| d:\Git\music_api\src\platform_integrator\wangyi\encrypt.rs         | Rust     |        164 |         10 |         26 |        200 |
+| d:\Git\music_api\src\platform_integrator\wangyi\mod.rs             | Rust     |         15 |          0 |          3 |         18 |
+| d:\Git\music_api\src\platform_integrator\wangyi\request.rs         | Rust     |         12 |          0 |          3 |         15 |
+| d:\Git\music_api\src\platform_integrator\wangyi\wy_album.rs        | Rust     |         87 |          1 |         11 |         99 |
+| d:\Git\music_api\src\platform_integrator\wangyi\wy_lyric.rs        | Rust     |         84 |          2 |          6 |         92 |
+| d:\Git\music_api\src\platform_integrator\wangyi\wy_music.rs        | Rust     |        592 |         89 |         31 |        712 |
+| d:\Git\music_api\src\platform_integrator\wangyi\wy_music_detail.rs | Rust     |         56 |          1 |          7 |         64 |
+| d:\Git\music_api\src\platform_integrator\wangyi\wy_musiclist.rs    | Rust     |        202 |         12 |         23 |        237 |
+| d:\Git\music_api\src\platform_integrator\wangyi\wy_search.rs       | Rust     |         77 |          2 |         13 |         92 |
+| d:\Git\music_api\src\util.rs                                       | Rust     |         76 |          0 |          7 |         83 |
+| Total                                                              |          |      6,935 |        313 |        795 |      8,043 |
++--------------------------------------------------------------------+----------+------------+------------+------------+------------+

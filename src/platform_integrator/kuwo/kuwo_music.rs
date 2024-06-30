@@ -4,12 +4,13 @@ use serde_json::json;
 use sqlx::{any::AnyRow, Row as _};
 
 use crate::{
-    sql_store_actory::SqlFactoryStore,
+    factory::sql_factory::ObjectUnsafeStore,
+    music_list::MusicList,
     util::{StrIden, StringIden},
-    Music, MusicInfo, MusicInfoTrait, MusicTrait, Quality, Store,
+    Music, MusicAggregator, MusicInfo, MusicInfoTrait, MusicTrait, ObjectSafeStore, Quality,
 };
 
-use super::{kuwo_quality::KuWoQuality, KUWO};
+use super::{kuwo_album::get_music_album, kuwo_lyric::get_lrc, kuwo_quality::KuWoQuality, KUWO};
 
 pub const ALBUM: &str = "Album";
 pub const ALBUM_ID: &str = "Albumid";
@@ -29,7 +30,7 @@ pub struct SearchResult {
     abslist: Vec<KuwoMusic>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct KuwoMusic {
     #[serde(alias = "album")]
     #[serde(rename = "ALBUM")]
@@ -72,6 +73,7 @@ pub struct KuwoMusic {
     #[serde(default)]
     pub(crate) quality: Vec<KuWoQuality>,
 
+    // 这个数据是由代码中默认给出的最高音质,与酷我无关
     #[serde(default)]
     pub(crate) default_quality: KuWoQuality,
 
@@ -81,7 +83,7 @@ pub struct KuwoMusic {
     #[serde(default)]
     pub(crate) lyric: String,
 
-    // 注意这个id标志的是其在某自定义歌单中的主键的值
+    // 注意这个id标志的是其在某自定义歌单中的主键的值,与酷我无关
     #[serde(default)]
     pub(crate) id: i64,
 }
@@ -89,9 +91,9 @@ pub struct KuwoMusic {
 unsafe impl Sync for KuwoMusic {}
 unsafe impl Send for KuwoMusic {}
 
-impl SqlFactoryStore for KuwoMusic {
+impl ObjectUnsafeStore for KuwoMusic {
     // 实现从 sqlx::AnyRow 转换为 KuwoMusic 的方法
-    fn from_row(row: AnyRow, index: i64) -> Result<Music, anyhow::Error> {
+    fn from_row(row: AnyRow, id: i64) -> Result<Music, anyhow::Error> {
         Ok(Box::new(KuwoMusic {
             album: row.try_get(ALBUM).unwrap_or_default(),
             album_id: row.try_get(ALBUM_ID).unwrap_or_default(),
@@ -107,7 +109,7 @@ impl SqlFactoryStore for KuwoMusic {
                 .unwrap_or_default(),
             pic: row.try_get(PIC).unwrap_or_default(),
             lyric: row.try_get(LYRIC).unwrap_or_default(),
-            id: index,
+            id,
             default_quality: serde_json::from_str::<KuWoQuality>(
                 &row.try_get::<String, _>(DEFAULT_QUALITY)?,
             )
@@ -145,7 +147,7 @@ impl MusicInfoTrait for KuwoMusic {
 
     fn get_music_info(&self) -> crate::MusicInfo {
         crate::MusicInfo {
-            source: KUWO.to_string(),
+            source: KUWO,
             name: self.song_name.clone(),
             artist: self.artist.split("&").map(|a| a.to_string()).collect(),
             duration: {
@@ -209,17 +211,39 @@ impl MusicInfoTrait for KuwoMusic {
     fn get_extra_into(&self, quality: &Quality) -> String {
         serde_json::to_string(&json!({"music_rid":self.music_rid,"quality":quality})).unwrap()
     }
-    fn get_music_id(&self) -> i64 {
-        self.id
+
+    fn fetch_lyric(
+        &self,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<String, anyhow::Error>> + Send>>
+    {
+        let v = self.get_primary_kv().1;
+        Box::pin(async move { Ok(get_lrc(&v).await?) })
     }
-    fn get_album_info(&self) -> serde_json::Value {
-        json!({"album_id":self.album_id,"album":self.album})
+
+    fn clone_(&self) -> Music {
+        Box::new(self.clone())
+    }
+
+    fn fetch_album(
+        &self,
+        page: u32,
+        limit: u32,
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<
+                    Output = Result<(MusicList, Vec<MusicAggregator>), anyhow::Error>,
+                > + Send,
+        >,
+    > {
+        let album_id = self.album_id.clone();
+        let album_name = self.album.clone();
+        Box::pin(async move { Ok(get_music_album(&album_id, &album_name, page, limit).await?) })
     }
 }
 
 impl MusicTrait for KuwoMusic {}
 
-impl Store for KuwoMusic {
+impl ObjectSafeStore for KuwoMusic {
     fn to_json(&self) -> Result<std::string::String, anyhow::Error> {
         Ok(serde_json::to_string(&self).unwrap())
     }

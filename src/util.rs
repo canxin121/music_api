@@ -1,4 +1,7 @@
 use lazy_static::lazy_static;
+use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
+use reqwest_retry::policies::ExponentialBackoff;
+use reqwest_retry::RetryTransientMiddleware;
 use sea_query::Iden;
 use sea_query::{
     MysqlQueryBuilder, PostgresQueryBuilder, QueryBuilder, SchemaBuilder, SchemaStatementBuilder,
@@ -7,8 +10,17 @@ use sea_query::{
 use sea_query_binder::{SqlxBinder, SqlxValues};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-
 lazy_static! {
+    pub static ref CLIENT: ClientWithMiddleware = ClientBuilder::new(
+        reqwest::Client::builder()
+            .danger_accept_invalid_certs(true)
+            .build()
+            .unwrap()
+    )
+    .with(RetryTransientMiddleware::new_with_policy(
+        ExponentialBackoff::builder().build_with_max_retries(3),
+    ))
+    .build();
     pub static ref QUERY_BUILDER: Arc<RwLock<Box<dyn QueryBuilder + Send + Sync>>> = {
         let builder: Box<dyn QueryBuilder + Send + Sync> = Box::new(SqliteQueryBuilder);
         Arc::new(RwLock::new(builder))
@@ -63,24 +75,8 @@ pub async fn build_sqlx_query<Q: SqlxBinder>(
     let builder = QUERY_BUILDER.read().await;
     Ok(query.build_any_sqlx(builder.as_ref()))
 }
+
 pub async fn build_query<T: SchemaStatementBuilder>(query: T) -> Result<String, anyhow::Error> {
     let builder = SCHEMA_BUILDER.read().await;
     Ok(query.build_any(builder.as_ref()))
-}
-
-pub fn format_seconds_to_timestamp(seconds: f64) -> String {
-    let minutes = (seconds / 60.0).floor() as i32;
-    let remaining_seconds = seconds % 60.0;
-    format!("{:02}:{:05.2}", minutes, remaining_seconds)
-}
-
-pub fn decode_html_entities(input: &str) -> String {
-    input
-        .replace("&nbsp;", " ")
-        .replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&apos;", "'")
-        .replace("&#039;", "'")
 }

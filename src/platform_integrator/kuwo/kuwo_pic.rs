@@ -1,4 +1,4 @@
-use crate::search_factory::CLIENT;
+use crate::util::CLIENT;
 
 fn gen_get_pic_url(music_id: &str) -> String {
     format!(

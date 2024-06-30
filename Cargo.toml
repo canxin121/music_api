@@ -6,9 +6,21 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+aes = "0.8.4"
 anyhow = "1.0.82"
+base64 = "0.22.1"
+cbc = "0.1.2"
+crypto = "0.5.1"
+ecb = "0.1.2"
+env_logger = "0.11.3"
 futures = "0.3.30"
+generic-array = "1.0.0"
+hex = "0.4.3"
 lazy_static = "1.4.0"
+log = "0.4.21"
+md-5 = "0.10.6"
+rand = "0.8.5"
+regex = "1.10.5"
 reqwest = { version = "0.12.4", features = [
     "json",
     "rustls-tls",
@@ -16,10 +28,13 @@ reqwest = { version = "0.12.4", features = [
 ], default-features = false }
 reqwest-middleware = "0.3.1"
 reqwest-retry = "0.5.0"
+rsa = { version = "0.9.6", features = ["hazmat"] }
 sea-query = { version = "0.30.7" }
 sea-query-binder = { version = "0.5.0", features = ["sqlx-any", "sqlx-sqlite"] }
 serde = { version = "1.0.198", features = ["derive"] }
 serde_json = "1.0.116"
+sha2 = "0.10.8"
 sqlx = { version = "0.7.4", features = ["runtime-tokio", "sqlite"] }
+strsim = "0.11.1"
 tokio = { version = "1.37.0", features = ["full"] }
 urlencoding = "2.1.3"

@@ -1,6 +1,8 @@
 use serde::Deserialize;
 
-use crate::{search_factory::CLIENT, util::format_seconds_to_timestamp};
+use crate::util::CLIENT;
+
+use super::util::format_seconds_to_timestamp;
 
 #[derive(Deserialize, Debug)]
 pub struct GerLrcResult {

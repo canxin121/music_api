@@ -1,26 +1,66 @@
+use std::{io::Write as _, mem};
+
 use futures::stream::{FuturesUnordered, StreamExt};
 use serde::{Deserialize, Serialize};
 
 use futures::future::join;
-use serde_json::Value;
 
-use crate::{search_factory::CLIENT, util::decode_html_entities, Music, MusicList};
+use crate::{
+    music_aggregator::{self, music_aggregator_online::SearchMusicAggregator},
+    music_list::{MusicList, MusicListTrait},
+    platform_integrator::kuwo::util::decode_html_entities,
+    util::CLIENT,
+    Music, MusicAggregator, MusicListInfo,
+};
 
 use super::{
     kuwo_lyric::get_lrc,
     kuwo_music::KuwoMusic,
     kuwo_music_info::get_music_info,
     kuwo_quality::{gen_minfo_from_formats, process_qualities, KuWoQuality},
+    KUWO,
 };
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct SearchResult {
+pub struct AlbumResult {
     name: String,
     artist: String,
     info: String,
     albumid: String,
     img: String,
     musiclist: Vec<AlbumMusic>,
+}
+
+impl MusicListTrait for AlbumResult {
+    fn source(&self) -> String {
+        KUWO.to_string()
+    }
+
+    fn get_musiclist_info(&self) -> MusicListInfo {
+        MusicListInfo {
+            name: self.name.clone(),
+            art_pic: self.img.clone(),
+            desc: self.info.clone(),
+            extra: None,
+        }
+    }
+
+    fn get_music_aggregators<'a>(
+        &'a self,
+        page: u32,
+        limit: u32,
+    ) -> std::pin::Pin<
+        Box<
+            dyn futures::Future<
+                    Output = Result<Vec<crate::music_aggregator::MusicAggregator>, anyhow::Error>,
+                > + 'a,
+        >,
+    > {
+        Box::pin(async move {
+            let (_, aggregators) = get_music_album(&self.albumid, &self.name, page, limit).await?;
+            Ok(aggregators)
+        })
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -37,18 +77,13 @@ pub fn gen_album_url(album_id: &str, page: u32, limit: u32) -> String {
 }
 
 pub async fn get_music_album(
-    payload: Value,
+    album_id: &str,
+    album: &str,
     page: u32,
-) -> Result<(MusicList, Vec<Music>), anyhow::Error> {
-    let album = payload
-        .get("album")
-        .and_then(|m| m.as_str())
-        .ok_or_else(|| anyhow::anyhow!("Invalid Payload"))?;
-    let album_id = payload
-        .get("album_id")
-        .and_then(|m| m.as_str())
-        .ok_or_else(|| anyhow::anyhow!("Invalid Payload"))?;
-    let url = gen_album_url(album_id, page, 30);
+    limit: u32,
+) -> Result<(MusicList, Vec<MusicAggregator>), anyhow::Error> {
+    assert!(page >= 1, "Page must be greater than 0");
+    let url = gen_album_url(album_id, page, limit);
     let text = CLIENT
         .get(&url)
         .send()
@@ -56,23 +91,21 @@ pub async fn get_music_album(
         .text()
         .await?
         .replace("'", "\"");
-    let mut result = serde_json::from_str::<SearchResult>(&text)?;
-    result.name = decode_html_entities(&result.name);
-    result.artist = decode_html_entities(&result.artist);
-    result.info = decode_html_entities(&result.info);
-    let music_list = MusicList {
-        name: result.name,
-        art_pic: result.img.to_string(),
-        desc: result.info,
-    };
 
-    let mut music_futures: FuturesUnordered<_> = result
-        .musiclist
+    let mut album_result = serde_json::from_str::<AlbumResult>(&text)?;
+    album_result.name = decode_html_entities(&album_result.name);
+    album_result.artist = decode_html_entities(&album_result.artist);
+    album_result.info = decode_html_entities(&album_result.info);
+
+    let mut musiclist = Vec::new();
+    mem::swap(&mut musiclist, &mut album_result.musiclist);
+
+    let mut music_futures: FuturesUnordered<_> = musiclist
         .into_iter()
         .map(|m| {
             let album = album.to_string();
             let album_id = album_id.to_string();
-            let artist = decode_html_entities(&result.artist);
+            let artist = decode_html_entities(&album_result.artist);
             async move {
                 let (lrc_result, music_info_result) =
                     join(get_lrc(&m.id), get_music_info(&m.id)).await;
@@ -96,7 +129,7 @@ pub async fn get_music_album(
                         .as_ref()
                         .map_or("unknown".to_string(), |info| info.duration.to_string()),
                     quality: qualities,
-                    default_quality: default_quality,
+                    default_quality,
                     pic: music_info_result
                         .as_ref()
                         .map_or(String::new(), |info| info.img.clone()),
@@ -111,9 +144,9 @@ pub async fn get_music_album(
     let mut musics = Vec::new();
     while let Some(music_result) = music_futures.next().await {
         if let Some(music) = music_result? {
-            musics.push(music);
+            musics.push(Box::new(SearchMusicAggregator::from_music(music)) as MusicAggregator);
         }
     }
 
-    Ok((music_list, musics))
+    Ok((Box::new(album_result) as MusicList, musics))
 }

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::search_factory::CLIENT;
+use crate::util::CLIENT;
 
 #[derive(Serialize, Deserialize)]
 pub struct MusicInfoResult {
