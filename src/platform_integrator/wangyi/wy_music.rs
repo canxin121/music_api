@@ -177,7 +177,7 @@ impl MusicInfoTrait for WyMusic {
         }
     }
 
-    fn get_extra_into(&self, quality: &crate::Quality) -> String {
+    fn get_extra_info(&self, quality: &crate::Quality) -> String {
         json!({
             "id": self.id,
             "quality": quality.short,

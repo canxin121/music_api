@@ -208,7 +208,7 @@ impl MusicInfoTrait for KuwoMusic {
     fn source(&self) -> &'static str {
         KUWO
     }
-    fn get_extra_into(&self, quality: &Quality) -> String {
+    fn get_extra_info(&self, quality: &Quality) -> String {
         serde_json::to_string(&json!({"music_rid":self.music_rid,"quality":quality})).unwrap()
     }
 

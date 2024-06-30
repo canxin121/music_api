@@ -80,7 +80,7 @@ pub trait MusicInfoTrait {
     // 获取音乐的信息
     fn get_music_info(&self) -> MusicInfo;
     // 获取额外的信息
-    fn get_extra_into(&self, quality: &Quality) -> String;
+    fn get_extra_info(&self, quality: &Quality) -> String;
     // 用于sql储存唯一索引键值，k指储存的列名，v指本歌曲对应列的值
     fn get_primary_kv(&self) -> (String, String);
     // 获取歌词
