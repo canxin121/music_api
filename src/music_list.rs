@@ -15,7 +15,7 @@ pub trait MusicListTrait {
         &self,
         page: u32,
         limit: u32,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<MusicAggregator>, anyhow::Error>> + '_>>;
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<MusicAggregator>, anyhow::Error>> + Send + '_>>;
 }
 impl Display for MusicList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
