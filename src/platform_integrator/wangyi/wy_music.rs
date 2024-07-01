@@ -381,7 +381,7 @@ impl WyMusic {
         }
         if let Some(sq) = &self.sq {
             qualities.push(Quality {
-                short: "super".to_string(),
+                short: "lossless".to_string(),
                 level: Some(sq.sr.to_string()),
                 bitrate: Some(sq.br),
                 format: Some("unknown".to_string()),
@@ -390,7 +390,7 @@ impl WyMusic {
         }
         if let Some(h) = &self.h {
             qualities.push(Quality {
-                short: "high".to_string(),
+                short: "exhigh".to_string(),
                 level: Some(h.sr.to_string()),
                 bitrate: Some(h.br),
                 format: Some("unknown".to_string()),
@@ -399,7 +399,7 @@ impl WyMusic {
         }
         if let Some(m) = &self.m {
             qualities.push(Quality {
-                short: "medium".to_string(),
+                short: "higher".to_string(),
                 level: Some(m.sr.to_string()),
                 bitrate: Some(m.br),
                 format: Some("unknown".to_string()),
@@ -408,7 +408,7 @@ impl WyMusic {
         }
         if let Some(l) = &self.l {
             qualities.push(Quality {
-                short: "low".to_string(),
+                short: "standard".to_string(),
                 level: Some(l.sr.to_string()),
                 bitrate: Some(l.br),
                 format: Some("unknown".to_string()),
