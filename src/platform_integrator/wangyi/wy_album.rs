@@ -46,15 +46,15 @@ impl MusicListTrait for Album {
         }
     }
 
-    fn get_music_aggregators<'a>(
-        &'a self,
+    fn get_music_aggregators(
+        &self,
         _page: u32,
         _limit: u32,
     ) -> std::pin::Pin<
         Box<
             dyn futures::Future<
-                    Output = Result<Vec<crate::music_aggregator::MusicAggregator>, anyhow::Error>,
-                > + 'a,
+                Output = Result<Vec<crate::music_aggregator::MusicAggregator>, anyhow::Error>,
+            >,
         >,
     > {
         Box::pin(async { Ok(Vec::with_capacity(0)) })

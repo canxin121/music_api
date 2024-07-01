@@ -45,15 +45,15 @@ impl MusicListTrait for AlbumResult {
         }
     }
 
-    fn get_music_aggregators<'a>(
-        &'a self,
+    fn get_music_aggregators(
+        &self,
         page: u32,
         limit: u32,
     ) -> std::pin::Pin<
         Box<
             dyn futures::Future<
                     Output = Result<Vec<crate::music_aggregator::MusicAggregator>, anyhow::Error>,
-                > + 'a,
+                > + '_,
         >,
     > {
         Box::pin(async move {

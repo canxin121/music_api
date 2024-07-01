@@ -156,13 +156,12 @@ impl MusicListTrait for MusicListDetailResponseInnerPlaylist {
         }
     }
 
-    fn get_music_aggregators<'a>(
-        &'a self,
+    fn get_music_aggregators(
+        &self,
         page: u32,
         limit: u32,
-    ) -> std::pin::Pin<
-        Box<dyn futures::Future<Output = Result<Vec<MusicAggregator>, anyhow::Error>> + 'a>,
-    > {
+    ) -> std::pin::Pin<Box<dyn futures::Future<Output = Result<Vec<MusicAggregator>, anyhow::Error>>>>
+    {
         let musiclist_id = self.id.clone();
         Box::pin(async move {
             Ok(get_musics_from_music_list(musiclist_id, page, limit)
