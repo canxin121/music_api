@@ -11,11 +11,11 @@ pub type MusicList = Box<dyn MusicListTrait + Send + Sync>;
 pub trait MusicListTrait {
     fn source(&self) -> String;
     fn get_musiclist_info(&self) -> MusicListInfo;
-    fn get_music_aggregators<'a>(
-        &'a self,
+    fn get_music_aggregators(
+        &self,
         page: u32,
         limit: u32,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<MusicAggregator>, anyhow::Error>> + 'a>>;
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<MusicAggregator>, anyhow::Error>> >>;
 }
 impl Display for MusicList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
