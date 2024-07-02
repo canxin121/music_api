@@ -1,4 +1,4 @@
-pub fn decode_html_entities(input: &str) -> String {
+pub fn decode_html_entities(input: String) -> String {
     input
         .replace("&nbsp;", " ")
         .replace("&amp;", "&")

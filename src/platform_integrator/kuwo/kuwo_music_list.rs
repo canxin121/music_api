@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use urlencoding::encode;
 
+use super::util::decode_html_entities;
 use super::KUWO;
 use super::{
     kuwo_music::KuwoMusic,
@@ -87,13 +88,14 @@ pub async fn search_music_list(
     limit: u32,
 ) -> Result<Vec<MusicList>, anyhow::Error> {
     let url = gen_music_list_url(content, page, limit);
-    let text = CLIENT
+    let mut text = CLIENT
         .get(&url)
         .send()
         .await?
         .text()
         .await?
         .replace("'", "\"");
+    text = decode_html_entities(text);
     let search_result: SearchResult = serde_json::from_str(&text)?;
     Ok(search_result
         .abslist

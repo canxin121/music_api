@@ -85,18 +85,16 @@ pub async fn get_music_album(
 ) -> Result<(MusicList, Vec<MusicAggregator>), anyhow::Error> {
     assert!(page >= 1, "Page must be greater than 0");
     let url = gen_album_url(album_id, page, limit);
-    let text = CLIENT
+    let mut text = CLIENT
         .get(&url)
         .send()
         .await?
         .text()
         .await?
         .replace("'", "\"");
+    text = decode_html_entities(text);
 
     let mut album_result = serde_json::from_str::<AlbumResult>(&text)?;
-    album_result.name = decode_html_entities(&album_result.name);
-    album_result.artist = decode_html_entities(&album_result.artist);
-    album_result.info = decode_html_entities(&album_result.info);
 
     let mut musiclist = Vec::new();
     mem::swap(&mut musiclist, &mut album_result.musiclist);
@@ -106,7 +104,7 @@ pub async fn get_music_album(
         .map(|m| {
             let album = album.to_string();
             let album_id = album_id.to_string();
-            let artist = decode_html_entities(&album_result.artist);
+            let artist = album_result.artist.clone();
             async move {
                 let (lrc_result, music_info_result) =
                     join(get_lrc(&m.id), get_music_info(&m.id)).await;
@@ -122,7 +120,7 @@ pub async fn get_music_album(
                     artist,
                     artist_id: m.artistid,
                     format: "wma".to_string(),
-                    song_name: decode_html_entities(&m.name),
+                    song_name: decode_html_entities(m.name),
                     music_rid: m.id,
                     minfo: raw_quality,
                     n_minfo: String::with_capacity(0),
