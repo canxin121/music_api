@@ -1,7 +1,4 @@
-use futures::Future;
-use std::pin::Pin;
-
-use crate::{music_aggregator::MusicAggregator, music_list::MusicListTrait, MusicListInfo};
+use crate::{music_list::MusicListTrait, MusicListInfo};
 
 use super::SqlFactory;
 
@@ -23,7 +20,14 @@ impl MusicListTrait for SqlMusicList {
         &'b self,
         _page: u32,
         _limit: u32,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<MusicAggregator>, anyhow::Error>> + 'b>> {
+    ) -> std::pin::Pin<
+        Box<
+            dyn futures::Future<
+                    Output = Result<Vec<crate::music_aggregator::MusicAggregator>, anyhow::Error>,
+                > + Send
+                + '_,
+        >,
+    > {
         Box::pin(async move { SqlFactory::get_all_musics(&self.info).await })
     }
 

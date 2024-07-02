@@ -53,7 +53,8 @@ impl MusicListTrait for AlbumResult {
         Box<
             dyn futures::Future<
                     Output = Result<Vec<crate::music_aggregator::MusicAggregator>, anyhow::Error>,
-                > + '_,
+                > + Send
+                + '_,
         >,
     > {
         Box::pin(async move {

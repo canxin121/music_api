@@ -50,8 +50,9 @@ impl MusicListTrait for KuwoMusicList {
     ) -> std::pin::Pin<
         Box<
             dyn futures::Future<
-                Output = Result<Vec<crate::music_aggregator::MusicAggregator>, anyhow::Error>,
-            >,
+                    Output = Result<Vec<crate::music_aggregator::MusicAggregator>, anyhow::Error>,
+                > + Send
+                + '_,
         >,
     > {
         let playlist_id = self.playlistid.clone();
@@ -130,7 +131,12 @@ impl MusicListTrait for MusicListDetail {
         page: u32,
         limit: u32,
     ) -> std::pin::Pin<
-        Box<dyn futures::Future<Output = Result<Vec<MusicAggregator>, anyhow::Error>> + 'a>,
+        Box<
+            dyn futures::Future<
+                    Output = Result<Vec<crate::music_aggregator::MusicAggregator>, anyhow::Error>,
+                > + Send
+                + '_,
+        >,
     > {
         let playlist_id = self.musiclist_id.clone();
         Box::pin(async move {

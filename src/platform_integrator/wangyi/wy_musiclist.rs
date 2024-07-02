@@ -56,8 +56,9 @@ impl MusicListTrait for WyPlaylist {
     ) -> std::pin::Pin<
         Box<
             dyn futures::Future<
-                Output = Result<Vec<crate::music_aggregator::MusicAggregator>, anyhow::Error>,
-            >,
+                    Output = Result<Vec<crate::music_aggregator::MusicAggregator>, anyhow::Error>,
+                > + Send
+                + '_,
         >,
     > {
         let musiclist_id = self.id.clone();
@@ -160,8 +161,14 @@ impl MusicListTrait for MusicListDetailResponseInnerPlaylist {
         &self,
         page: u32,
         limit: u32,
-    ) -> std::pin::Pin<Box<dyn futures::Future<Output = Result<Vec<MusicAggregator>, anyhow::Error>>>>
-    {
+    ) -> std::pin::Pin<
+        Box<
+            dyn futures::Future<
+                    Output = Result<Vec<crate::music_aggregator::MusicAggregator>, anyhow::Error>,
+                > + Send
+                + '_,
+        >,
+    > {
         let musiclist_id = self.id.clone();
         Box::pin(async move {
             Ok(get_musics_from_music_list(musiclist_id, page, limit)
