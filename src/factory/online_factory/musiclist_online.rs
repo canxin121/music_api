@@ -24,7 +24,9 @@ impl OnlineFactory {
             sources = vec![KUWO.to_string(), WANGYI.to_string()];
         }
         let mut futures: Vec<
-            std::pin::Pin<Box<dyn Future<Output = Result<Vec<MusicList>, anyhow::Error>>>>,
+            std::pin::Pin<
+                Box<dyn Future<Output = Result<Vec<MusicList>, anyhow::Error>> + Send + '_>,
+            >,
         > = Vec::new();
         for s in sources {
             match s.as_str() {
