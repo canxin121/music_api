@@ -205,7 +205,7 @@ impl MusicInfoTrait for KuwoMusic {
         }
     }
 
-    fn source(&self) ->  String {
+    fn source(&self) -> String {
         KUWO.to_string()
     }
     fn get_extra_info(&self, quality: &Quality) -> String {
@@ -324,7 +324,7 @@ impl ObjectSafeStore for KuwoMusic {
             query.value(StrIden(&LYRIC), serde_json::to_string(&info.lyric).unwrap());
             need_update = true;
         }
-        if origin.default_quality != info.default_quality {
+        if info.default_quality.is_some() && origin.default_quality != info.default_quality {
             query.value(
                 StrIden(&DEFAULT_QUALITY),
                 serde_json::to_string(&info.default_quality).unwrap(),

@@ -28,6 +28,7 @@ pub const M: &str = "M";
 pub const L: &str = "L";
 pub const SQ: &str = "SQ";
 pub const HR: &str = "HR";
+pub const DEFAULT_QUALITY: &str = "DefaultQuality";
 
 impl ObjectSafeStore for WyMusic {
     fn to_json(&self) -> Result<String, anyhow::Error> {
@@ -57,6 +58,7 @@ impl ObjectSafeStore for WyMusic {
                 StrIden(L),
                 StrIden(SQ),
                 StrIden(HR),
+                StrIden(DEFAULT_QUALITY),
             ])
             .values_panic(vec![
                 self.name.clone().into(),
@@ -71,6 +73,9 @@ impl ObjectSafeStore for WyMusic {
                 serde_json::to_string(&self.l).unwrap_or_default().into(),
                 serde_json::to_string(&self.sq).unwrap_or_default().into(),
                 serde_json::to_string(&self.hr).unwrap_or_default().into(),
+                serde_json::to_string(&default_quality)
+                    .unwrap_or_default()
+                    .into(),
             ])
             .on_conflict(OnConflict::column(StrIden(ID)).do_nothing().to_owned())
             .to_owned();
@@ -121,6 +126,13 @@ impl ObjectSafeStore for WyMusic {
             need_update = true;
         }
 
+        if info.default_quality.is_some() && origin.default_quality != info.default_quality {
+            query.value(
+                StrIden(&DEFAULT_QUALITY),
+                serde_json::to_string(&info.default_quality).unwrap(),
+            );
+            need_update = true;
+        }
         if need_update {
             Ok(query.clone())
         } else {
@@ -154,13 +166,7 @@ impl MusicInfoTrait for WyMusic {
                     None
                 }
             },
-            default_quality: {
-                if let Some(quality) = qualities.first() {
-                    Some(quality.clone())
-                } else {
-                    None
-                }
-            },
+            default_quality: self.default_quality.clone(),
             qualities: qualities,
             art_pic: {
                 if let Some(art_pic) = &self.artpic {
@@ -254,6 +260,10 @@ impl ObjectUnsafeStore for WyMusic {
                 .try_get::<String, _>(HR)
                 .ok()
                 .and_then(|s| serde_json::from_str(&s).ok()),
+            default_quality: row
+                .try_get::<String, _>(DEFAULT_QUALITY)
+                .ok()
+                .and_then(|s| serde_json::from_str(&s).ok()),
         }))
     }
 
@@ -297,6 +307,7 @@ impl Default for WyMusic {
             hr: None,
             artpic: None,
             lyric: None,
+            default_quality: None,
         }
     }
 }
@@ -326,6 +337,7 @@ pub struct WyMusic {
     artpic: Option<String>,
     #[serde(default)]
     lyric: Option<String>,
+    default_quality: Option<Quality>,
     // 不清楚这些字段的含义
     // rt: Option<String>,
     // crbt: Option<String>,
