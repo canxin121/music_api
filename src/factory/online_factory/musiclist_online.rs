@@ -1,3 +1,5 @@
+use futures::{future::join_all, Future};
+
 use crate::{
     music_aggregator::{music_aggregator_online::SearchMusicAggregator, MusicAggregator},
     music_list::MusicList,
@@ -13,31 +15,34 @@ use super::OnlineFactory;
 
 impl OnlineFactory {
     pub async fn search_musiclist(
-        source: &str,
+        mut sources: Vec<String>,
         content: &str,
         page: u32,
         limit: u32,
     ) -> Result<Vec<MusicList>, anyhow::Error> {
-        match source {
-            ALL => {
-                let kuwo_future = kuwo::search_music_list(content, page, limit);
-                let wangyi_future = wangyi::search_music_list(content, page, limit);
-
-                let (kuwo_result, wangyi_result) = tokio::join!(kuwo_future, wangyi_future);
-
-                let mut res = Vec::new();
-                if let Ok(music_lists) = kuwo_result {
-                    res.extend(music_lists);
-                }
-                if let Ok(music_lists) = wangyi_result {
-                    res.extend(music_lists);
-                }
-                Ok(res)
-            }
-            KUWO => kuwo::search_music_list(content, page, limit).await,
-            WANGYI => wangyi::search_music_list(content, page, limit).await,
-            _ => Err(anyhow::anyhow!("source not supported")),
+        if sources.contains(&ALL.to_string()) {
+            sources = vec![KUWO.to_string(), WANGYI.to_string()];
         }
+        let mut futures: Vec<
+            std::pin::Pin<Box<dyn Future<Output = Result<Vec<MusicList>, anyhow::Error>>>>,
+        > = Vec::new();
+        for s in sources {
+            match s.as_str() {
+                KUWO => futures.push(Box::pin(kuwo::search_music_list(content, page, limit)) as _),
+                WANGYI => {
+                    futures.push(Box::pin(wangyi::search_music_list(content, page, limit)) as _)
+                }
+                _ => return Err(anyhow::anyhow!("source not supported")),
+            }
+        }
+        let results = join_all(futures).await;
+        let mut res = Vec::new();
+        for result in results {
+            if let Ok(music_lists) = result {
+                res.extend(music_lists);
+            }
+        }
+        Ok(res)
     }
 
     pub async fn get_musiclist_from_share(
@@ -83,9 +88,10 @@ mod test {
 
     #[tokio::test]
     pub async fn test_search_musiclist() {
-        let res = super::OnlineFactory::search_musiclist(&ALL, "周杰伦", 1, 10)
-            .await
-            .unwrap();
+        let res =
+            super::OnlineFactory::search_musiclist([ALL.to_string()].to_vec(), "周杰伦", 1, 10)
+                .await
+                .unwrap();
         res.iter().for_each(|x| {
             println!("{}", x.get_musiclist_info());
         });
