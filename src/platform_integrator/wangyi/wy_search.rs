@@ -75,7 +75,10 @@ pub async fn search_single_music(
     assert!(page >= 1, "Page must be greater than 0");
     let resp = wy_search(SearchTarget::SingleMusic, content, page, limit).await?;
     let result: SingleMusicSearchResult = serde_json::from_str(&resp)?;
-    let songs = result.result.songs;
+    let mut songs = result.result.songs;
+    songs.iter_mut().for_each(|s| {
+        s.default_quality = s.get_highest_quality();
+    });
     Ok(songs.into_iter().map(|m| Box::new(m) as Music).collect())
 }
 

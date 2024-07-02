@@ -337,7 +337,7 @@ pub struct WyMusic {
     artpic: Option<String>,
     #[serde(default)]
     lyric: Option<String>,
-    default_quality: Option<Quality>,
+    pub default_quality: Option<Quality>,
     // 不清楚这些字段的含义
     // rt: Option<String>,
     // crbt: Option<String>,
@@ -380,7 +380,7 @@ pub struct WyMusic {
 unsafe impl Sync for WyMusic {}
 unsafe impl Send for WyMusic {}
 impl WyMusic {
-    fn get_qualities(&self) -> Vec<Quality> {
+    pub fn get_qualities(&self) -> Vec<Quality> {
         let mut qualities = Vec::new();
         if let Some(hr) = &self.hr {
             qualities.push(Quality {
@@ -430,7 +430,7 @@ impl WyMusic {
         qualities
     }
     // 获取最高的音质
-    fn get_highest_quality(&self) -> Option<Quality> {
+    pub fn get_highest_quality(&self) -> Option<Quality> {
         if let Some(hr) = &self.hr {
             return Some(Quality {
                 short: "hires".to_string(),

@@ -36,7 +36,10 @@ pub async fn get_musics_detail(music_ids: &[u64]) -> Result<Vec<MusicAggregator>
         .form(&weapi(&data)?)
         .send()
         .await?;
-    let resp = resp.json::<GetMusicResponse>().await?;
+    let mut resp = resp.json::<GetMusicResponse>().await?;
+    resp.songs.iter_mut().for_each(|s| {
+        s.default_quality = s.get_highest_quality();
+    });
     let musics = resp
         .songs
         .into_iter()

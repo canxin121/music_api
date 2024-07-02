@@ -75,6 +75,9 @@ pub async fn get_musics_from_album(
         .send()
         .await?;
     let mut resp = resp.json::<AlbumResponse>().await?;
+    resp.songs.iter_mut().for_each(|s| {
+        s.default_quality = s.get_highest_quality();
+    });
     let mut musics = Vec::new();
     mem::swap(&mut musics, &mut resp.songs);
     let musics = resp

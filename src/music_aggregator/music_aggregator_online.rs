@@ -171,7 +171,7 @@ mod test {
         let mut aggregator_search = aggregator_search::AggregatorOnlineFactory::new();
         aggregator_search
             .search_music_aggregator(
-                &vec![KUWO.to_string()],
+                &vec![WANGYI.to_string()],
                 "张惠妹",
                 1,
                 5,
