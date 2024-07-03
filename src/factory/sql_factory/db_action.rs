@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use sea_query::{ColumnDef, InsertStatement, Query, TableCreateStatement};
+use sea_query::{ColumnDef, InsertStatement, Query, Table, TableCreateStatement};
 use sqlx::{any::install_default_drivers, Acquire as _, AnyPool, Row as _};
 use tokio::{fs::File, io::AsyncWriteExt as _};
 
@@ -10,8 +10,8 @@ use crate::{
 };
 
 use super::{
-    ObjectUnsafeStore, SqlFactory, ID, METADATA, POOL, REFARTPIC, REFDESC, REFMETADATA, REFNAME,
-    VERSION,
+    ObjectUnsafeStore, SqlFactory, ID, INDEX, METADATA, POOL, REFARTPIC, REFDESC, REFMETADATA,
+    REFNAME, VERSION,
 };
 
 macro_rules! acquire_conn {
@@ -82,18 +82,21 @@ impl SqlFactory {
             // 其内部会逐个创建所有的表(忽视中间的创建错误(已存在则会出错))+初始化数据库版本为1
             0 => {
                 SqlFactory::create_all_table().await?;
+                SqlFactory::_update_refmetatable_add_column_index().await?;
             }
             _ => {}
         }
         Ok(())
     }
+
     // 创建自定义歌单元数据表
     async fn create_music_list_metadata_table() -> Result<(), anyhow::Error> {
         let query = TableCreateStatement::new()
             .table(REFMETADATA)
             .col(ColumnDef::new(REFNAME).string().not_null())
             .col(ColumnDef::new(REFARTPIC).string().not_null())
-            .col(ColumnDef::new(REFDESC).integer())
+            .col(ColumnDef::new(REFDESC).string().null())
+            .col(ColumnDef::new(INDEX).integer().not_null())
             .col(ColumnDef::new(ID).integer().primary_key().auto_increment())
             .clone();
         let mut conn = acquire_conn!();
@@ -157,5 +160,34 @@ impl SqlFactory {
 
         tx.commit().await?;
         Ok(())
+    }
+
+    // version 0->1 的update操作之一
+    async fn _update_refmetatable_add_column_index() -> Result<(), anyhow::Error> {
+        let query = r#"ALTER TABLE RefMetaData ADD COLUMN "Index" INTEGER NOT NULL DEFAULT 0;
+WITH seq AS (
+  SELECT 
+    ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS row_num,
+    RefName
+  FROM RefMetaData
+)
+UPDATE RefMetaData
+SET "Index" = seq.row_num
+FROM seq
+WHERE RefMetaData.RefName = seq.RefName;"#;
+        let mut conn: sqlx::pool::PoolConnection<sqlx::Any> = acquire_conn!();
+        sqlx::query(&query).execute(&mut *conn).await?;
+        Ok(())
+    }
+}
+#[cfg(test)]
+mod test {
+    use crate::SqlFactory;
+
+    #[tokio::test]
+    async fn test_update() {
+        SqlFactory::init_from_path(r"_data\version_0.db")
+            .await
+            .unwrap();
     }
 }

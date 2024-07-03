@@ -1,5 +1,5 @@
 use sea_query::{ColumnDef, Cond, Expr, InsertStatement, Query, Table, TableCreateStatement};
-use sqlx::Acquire as _;
+use sqlx::{Acquire as _, Row as _};
 
 use crate::{
     music_list::MusicList,
@@ -49,14 +49,22 @@ impl SqlFactory {
     ) -> Result<(), anyhow::Error> {
         let mut conn = acquire_conn!();
         let mut tx = conn.begin().await?;
+
+        // 获取最大ID,作为新插入时的Index(指示顺序)，这样可以确保新增的顺序在最后
+        let result = sqlx::query(&format!("SELECT MAX(Id) FROM '{}'", REFMETADATA.0))
+            .fetch_one(&mut *tx)
+            .await?;
+        let max_id: i64 = result.try_get(0).unwrap_or(0);
+
         for music_list in music_lists {
             let query = InsertStatement::new()
                 .into_table(REFMETADATA)
-                .columns(vec![REFNAME, REFDESC, REFARTPIC])
+                .columns(vec![REFNAME, REFDESC, REFARTPIC, INDEX])
                 .values_panic(vec![
                     music_list.name.clone().into(),
                     music_list.desc.clone().into(),
                     music_list.art_pic.clone().into(),
+                    (max_id + 1).into(),
                 ])
                 .to_owned();
 
@@ -68,9 +76,11 @@ impl SqlFactory {
         tx.commit().await?;
         Ok(())
     }
-    
+
     // 创建自定义歌单表
-    pub async fn create_musiclist(music_list_infos: &Vec<MusicListInfo>) -> Result<(), anyhow::Error> {
+    pub async fn create_musiclist(
+        music_list_infos: &Vec<MusicListInfo>,
+    ) -> Result<(), anyhow::Error> {
         let mut conn = acquire_conn!();
         let mut tx = conn.begin().await?;
         for music_list in music_list_infos {
@@ -120,7 +130,6 @@ impl SqlFactory {
                 query.value::<StrIden, String>(REFDESC, new_one.desc.to_string().into());
                 need_update = true;
             }
-
             if !need_update {
                 return Ok(());
             }
@@ -159,21 +168,62 @@ impl SqlFactory {
         // 先获取所有的ref数据
         let music_list_query = Query::select()
             .from(REFMETADATA)
-            .columns(vec![REFNAME, REFARTPIC, REFDESC])
+            .columns(vec![REFNAME, REFARTPIC, REFDESC, INDEX])
             .clone();
+
         let (music_list_sql, music_list_values) = build_sqlx_query(music_list_query).await?;
 
         let music_list_results = sqlx::query_with(&music_list_sql, music_list_values)
             .fetch_all(&mut *conn)
             .await?;
-        let mut results = Vec::new();
+
+        let mut results: Vec<(MusicList, i64)> = Vec::new();
         for result in music_list_results {
+            let index: i64 = result.try_get(INDEX.0)?;
             if let Ok(musiclist_info) = MusicListInfo::from_row(result) {
                 let musiclist = Box::new(SqlMusicList::new(musiclist_info)) as MusicList;
-                results.push(musiclist);
+                results.push((musiclist, index));
             }
         }
-        Ok(results)
+        results.sort_by_key(|&(_, index)| index);
+        Ok(results
+            .into_iter()
+            .map(|(musiclist, _)| musiclist)
+            .collect())
+    }
+
+    // 重新排序歌单
+    pub async fn reorder_musiclist(
+        new_full_index: &[i64],
+        full_ids_in_order: &[i64],
+    ) -> Result<(), anyhow::Error> {
+        if new_full_index.len() != full_ids_in_order.len() {
+            return Err(anyhow::anyhow!("Index and names length mismatch"));
+        }
+        let mut conn = acquire_conn!();
+        let mut tx = conn.begin().await?;
+
+        let result = sqlx::query(&format!("SELECT COUNT(*) FROM '{}'", REFMETADATA.0))
+            .fetch_one(&mut *tx)
+            .await?;
+        let real_length: i64 = result.try_get(0)?;
+        if (real_length as usize) != new_full_index.len() {
+            return Err(anyhow::anyhow!("Indexs and musics has wrong length"));
+        }
+
+        for (new_index, id) in new_full_index.into_iter().zip(full_ids_in_order) {
+            let update_query = Query::update()
+                .table(REFMETADATA)
+                .value(INDEX, *new_index)
+                .and_where(Expr::col(ID).eq(id.to_string()))
+                .to_owned();
+            let (update_sql, update_values) = build_sqlx_query(update_query).await?;
+            sqlx::query_with(&update_sql, update_values)
+                .execute(&mut *tx)
+                .await?;
+        }
+        tx.commit().await?;
+        Ok(())
     }
 
     // 删除一个自定义歌单
