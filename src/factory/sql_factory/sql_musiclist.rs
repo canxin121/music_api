@@ -18,7 +18,7 @@ impl MusicListTrait for SqlMusicList {
 
     fn get_music_aggregators<'b>(
         &'b self,
-        _page: u32,
+        page: u32,
         _limit: u32,
     ) -> std::pin::Pin<
         Box<
@@ -28,7 +28,14 @@ impl MusicListTrait for SqlMusicList {
                 + '_,
         >,
     > {
-        Box::pin(async move { SqlFactory::get_all_musics(&self.info).await })
+        // 如果不是第一页，直接返回空
+        // 这是为了防止请求后续页时，错误的返回了重复的音乐
+        // 导致调用方认为仍有后续页面，不断请求
+        if page != 1 {
+            return Box::pin(async move { Ok(vec![]) });
+        } else {
+            Box::pin(async move { SqlFactory::get_all_musics(&self.info).await })
+        }
     }
 
     fn source(&self) -> String {
