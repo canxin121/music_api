@@ -38,6 +38,7 @@ impl MusicListTrait for AlbumResult {
 
     fn get_musiclist_info(&self) -> MusicListInfo {
         MusicListInfo {
+            id: 0,
             name: self.name.clone(),
             art_pic: self.img.clone(),
             desc: self.info.clone(),

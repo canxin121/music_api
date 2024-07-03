@@ -9,6 +9,7 @@ async fn main() {
 
     // 创建一个新的歌单
     let new_musiclist_info = MusicListInfo {
+        id: 0,
         name: "test".to_string(),
         art_pic: "".to_string(),
         desc: "".to_string(),

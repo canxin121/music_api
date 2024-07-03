@@ -77,6 +77,7 @@ mod test {
             });
 
             let musiclist_info = MusicListInfo {
+                id: 0,
                 name: "歌单1".to_string(),
                 art_pic: "".to_string(),
                 desc: "".to_string(),

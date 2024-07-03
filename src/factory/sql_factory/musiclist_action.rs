@@ -168,7 +168,7 @@ impl SqlFactory {
         // 先获取所有的ref数据
         let music_list_query = Query::select()
             .from(REFMETADATA)
-            .columns(vec![REFNAME, REFARTPIC, REFDESC, INDEX])
+            .columns(vec![REFNAME, REFARTPIC, REFDESC, INDEX, ID])
             .clone();
 
         let (music_list_sql, music_list_values) = build_sqlx_query(music_list_query).await?;
@@ -260,6 +260,7 @@ mod test {
 
         // 1. 创建初始歌单
         let initial_music_list = vec![MusicListInfo {
+            id: 0,
             name: "test".to_string(),
             desc: "test description".to_string(),
             art_pic: "test_art_pic".to_string(),
@@ -287,6 +288,7 @@ mod test {
 
         // 3. 修改歌单信息
         let modified_music_list = vec![MusicListInfo {
+            id: 0,
             name: "test_modified".to_string(),
             desc: "modified description".to_string(),
             art_pic: "modified_art_pic".to_string(),
@@ -315,12 +317,14 @@ mod test {
         // 4. 批量创建多个歌单
         let multiple_music_lists = vec![
             MusicListInfo {
+                id: 0,
                 name: "playlist1".to_string(),
                 desc: "playlist1 description".to_string(),
                 art_pic: "playlist1_art_pic".to_string(),
                 extra: None,
             },
             MusicListInfo {
+                id: 0,
                 name: "playlist2".to_string(),
                 desc: "playlist2 description".to_string(),
                 art_pic: "playlist2_art_pic".to_string(),

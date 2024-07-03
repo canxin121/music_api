@@ -39,6 +39,7 @@ pub struct WyPlaylist {
 impl MusicListTrait for WyPlaylist {
     fn get_musiclist_info(&self) -> MusicListInfo {
         MusicListInfo {
+            id: 0,
             name: self.name.clone(),
             art_pic: self.coverImgUrl.clone(),
             desc: self.description.clone().unwrap_or_default(),
@@ -147,6 +148,7 @@ struct MusicListDetailResponseInnerPlaylist {
 impl MusicListTrait for MusicListDetailResponseInnerPlaylist {
     fn get_musiclist_info(&self) -> MusicListInfo {
         MusicListInfo {
+            id: 0,
             name: self.name.clone().unwrap_or_default(),
             art_pic: self.coverImgUrl.clone().unwrap_or_default(),
             desc: self.description.clone().unwrap_or_default(),

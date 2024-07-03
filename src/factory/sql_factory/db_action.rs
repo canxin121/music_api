@@ -166,7 +166,7 @@ impl SqlFactory {
     async fn _update_refmetatable_add_column_index() -> Result<(), anyhow::Error> {
         let query = r#"ALTER TABLE RefMetaData ADD COLUMN "Index" INTEGER NOT NULL DEFAULT 0;
 WITH seq AS (
-  SELECT 
+  SELECT
     ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS row_num,
     RefName
   FROM RefMetaData

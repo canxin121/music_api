@@ -34,6 +34,7 @@ pub struct KuwoMusicList {
 impl MusicListTrait for KuwoMusicList {
     fn get_musiclist_info(&self) -> MusicListInfo {
         MusicListInfo {
+            id: 0,
             name: self.name.clone(),
             art_pic: self.pic.clone(),
             desc: self.intro.clone(),
@@ -118,6 +119,7 @@ pub struct MusicListDetail {
 impl MusicListTrait for MusicListDetail {
     fn get_musiclist_info(&self) -> MusicListInfo {
         MusicListInfo {
+            id: 0,
             name: self.title.clone(),
             art_pic: self.pic.clone(),
             desc: self.info.clone(),
