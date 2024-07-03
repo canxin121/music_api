@@ -81,8 +81,8 @@ impl SqlFactory {
             // init_create_table即可完成所有工作，
             // 其内部会逐个创建所有的表(忽视中间的创建错误(已存在则会出错))+初始化数据库版本为1
             0 => {
-                SqlFactory::create_all_table().await?;
                 SqlFactory::_update_refmetatable_add_column_index().await?;
+                SqlFactory::create_all_table().await?;
             }
             _ => {}
         }
@@ -177,6 +177,7 @@ FROM seq
 WHERE RefMetaData.RefName = seq.RefName;"#;
         let mut conn: sqlx::pool::PoolConnection<sqlx::Any> = acquire_conn!();
         sqlx::query(&query).execute(&mut *conn).await?;
+        conn.close().await?;
         Ok(())
     }
 }
@@ -189,5 +190,6 @@ mod test {
         SqlFactory::init_from_path(r"_data\version_0.db")
             .await
             .unwrap();
+        let musiclists = SqlFactory::get_all_musiclists().await.unwrap();
     }
 }
