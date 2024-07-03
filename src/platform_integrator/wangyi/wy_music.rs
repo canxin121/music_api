@@ -287,6 +287,7 @@ impl ObjectUnsafeStore for WyMusic {
             .col(ColumnDef::new(StrIden(L)).string().null())
             .col(ColumnDef::new(StrIden(SQ)).string().null())
             .col(ColumnDef::new(StrIden(HR)).string().null())
+            .col(ColumnDef::new(StrIden(DEFAULT_QUALITY)).string().null())
             .to_owned()
     }
 }
