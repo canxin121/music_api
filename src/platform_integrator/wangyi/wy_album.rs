@@ -79,8 +79,6 @@ pub async fn get_musics_from_album(
     resp.songs.iter_mut().for_each(|s| {
         s.default_quality = s.get_highest_quality();
     });
-    let mut musics = Vec::new();
-    mem::swap(&mut musics, &mut resp.songs);
     let musics = resp
         .songs
         .into_iter()
