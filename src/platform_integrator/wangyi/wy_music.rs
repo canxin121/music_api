@@ -9,7 +9,7 @@ use sqlx::{any::AnyRow, Row as _};
 use crate::{
     factory::sql_factory::ObjectUnsafeStore,
     music_list::MusicList,
-    util::{StrIden, StringIden},
+    util::{build_sqlx_query, StrIden, StringIden},
     Music, MusicAggregator, MusicInfo, MusicInfoTrait, MusicTrait, ObjectSafeStore, Quality,
 };
 
@@ -92,6 +92,7 @@ impl ObjectSafeStore for WyMusic {
         let query = binding
             .table(StringIden(self.source()))
             .and_where(Expr::col(StringIden(k.to_string())).eq(v));
+
         let mut need_update = false;
 
         if origin.name != info.name {
@@ -99,9 +100,21 @@ impl ObjectSafeStore for WyMusic {
             need_update = true;
         }
         if origin.artist != info.artist {
+            let new_artists: Vec<Artist> = info
+                .artist
+                .clone()
+                .into_iter()
+                .map(|a| Artist {
+                    id: 0,
+                    name: a,
+                    tns: Vec::with_capacity(0),
+                    alias: Vec::with_capacity(0),
+                    alia: Vec::with_capacity(0),
+                })
+                .collect();
             query.value(
                 StrIden(ARTISTS),
-                serde_json::to_string(&info.artist).unwrap(),
+                serde_json::to_string(&new_artists).unwrap(),
             );
             need_update = true;
         }
@@ -110,7 +123,15 @@ impl ObjectSafeStore for WyMusic {
             need_update = true;
         }
         if origin.album != info.album {
-            query.value(StrIden(ALBUM), info.album.clone());
+            let new_album = Album {
+                id: 0,
+                name: info.album.clone().unwrap_or("".to_string()),
+                picUrl: Some("".to_string()),
+                tns: Vec::with_capacity(0),
+                pic_str: None,
+                pic: None,
+            };
+            query.value(StrIden(ALBUM), serde_json::to_string(&new_album)?);
             need_update = true;
         }
         if origin.art_pic != info.art_pic {

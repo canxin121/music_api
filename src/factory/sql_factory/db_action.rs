@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use sea_query::{ColumnDef, InsertStatement, Query, Table, TableCreateStatement};
+use sea_query::{ColumnDef, InsertStatement, Query, TableCreateStatement};
 use sqlx::{any::install_default_drivers, Acquire as _, AnyPool, Row as _};
 use tokio::{fs::File, io::AsyncWriteExt as _};
 
@@ -190,6 +190,6 @@ mod test {
         SqlFactory::init_from_path(r"_data\version_0.db")
             .await
             .unwrap();
-        let musiclists = SqlFactory::get_all_musiclists().await.unwrap();
+        let _musiclists = SqlFactory::get_all_musiclists().await.unwrap();
     }
 }

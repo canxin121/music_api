@@ -163,7 +163,7 @@ mod test {
     use crate::{
         factory::online_factory::{aggregator_search, AggregatorOnlineFactory},
         filter::MusicFuzzFilter,
-        platform_integrator::{kuwo::KUWO, wangyi::WANGYI, ALL},
+        platform_integrator::{wangyi::WANGYI, ALL},
     };
 
     #[tokio::test]

@@ -196,7 +196,7 @@ impl MusicInfoTrait for KuwoMusic {
                     _ => Some(self.default_quality.bitrate),
                 },
                 format: Some(self.default_quality.format.clone()),
-                size: Some(self.default_quality.format.clone()),
+                size: Some(self.default_quality.size.clone()),
                 short: format!(
                     "{}k{}",
                     self.default_quality.bitrate, self.default_quality.format
@@ -305,10 +305,7 @@ impl ObjectSafeStore for KuwoMusic {
             need_update = true;
         }
         if origin.artist != info.artist {
-            query.value(
-                StrIden(&ARTIST),
-                serde_json::to_string(&info.artist)?,
-            );
+            query.value(StrIden(&ARTIST), &info.artist.join(","));
             need_update = true;
         }
         if origin.duration != info.duration {
@@ -328,9 +325,16 @@ impl ObjectSafeStore for KuwoMusic {
             need_update = true;
         }
         if info.default_quality.is_some() && origin.default_quality != info.default_quality {
+            let origin_default_quality = info.default_quality.clone().unwrap();
+            let new_quality = KuWoQuality {
+                level: origin_default_quality.level.unwrap_or("".to_string()),
+                bitrate: origin_default_quality.bitrate.unwrap_or(0),
+                format: origin_default_quality.format.unwrap_or("".to_string()),
+                size: origin_default_quality.size.unwrap_or("".to_string()),
+            };
             query.value(
                 StrIden(&DEFAULT_QUALITY),
-                serde_json::to_string(&info.default_quality).unwrap(),
+                serde_json::to_string(&new_quality).unwrap(),
             );
             need_update = true;
         }

@@ -46,8 +46,7 @@ impl MusicListTrait for SqlMusicList {
 #[cfg(test)]
 mod test {
     use crate::{
-        factory::online_factory::aggregator_search, MusicFuzzFilter, MusicListInfo, SqlFactory,
-        ALL, WANGYI,
+        factory::online_factory::aggregator_search, MusicFuzzFilter, MusicListInfo, SqlFactory, WANGYI,
     };
     macro_rules! init_test_env {
         ($db_name:expr) => {{
@@ -100,7 +99,7 @@ mod test {
     }
     #[tokio::test]
     async fn test_get() {
-        let (_musiclist_info, aggregator_search) = init_test_env!("sql_music_list_test_get.db");
+        let (_musiclist_info, _aggregator_search) = init_test_env!("sql_music_list_test_get.db");
         let musiclists = SqlFactory::get_all_musiclists().await.unwrap();
         let first = musiclists.first().unwrap();
         let aggs = first.get_music_aggregators(1, 1).await.unwrap();
