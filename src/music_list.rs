@@ -41,9 +41,9 @@ impl MusicListInfo {
     pub fn from_row(row: AnyRow) -> Result<MusicListInfo, anyhow::Error> {
         Ok(MusicListInfo {
             id: row.try_get(ID.0)?,
-            name: row.try_get(REFNAME.0).unwrap_or("Unknown".to_string()),
+            name: row.try_get(REFNAME.0).unwrap_or("获取失败".to_string()),
             art_pic: row.try_get(REFARTPIC.0).unwrap_or_default(),
-            desc: row.try_get(REFDESC.0).unwrap_or_default(),
+            desc: row.try_get(REFDESC.0).unwrap_or("获取失败".to_string()),
             extra: None,
         })
     }

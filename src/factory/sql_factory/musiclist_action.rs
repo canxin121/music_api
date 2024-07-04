@@ -122,7 +122,7 @@ impl SqlFactory {
                 need_rename = true;
                 need_update = true;
             }
-            if new_one.art_pic != old_one.art_pic && !new_one.art_pic.is_empty() {
+            if new_one.art_pic != old_one.art_pic {
                 query.value::<StrIden, String>(REFARTPIC, new_one.art_pic.to_string().into());
                 need_update = true;
             }
@@ -144,7 +144,7 @@ impl SqlFactory {
                 let s = build_query(rename_query).await?;
                 match sqlx::query(&s).execute(&mut *tx).await {
                     Ok(_) => {
-                        query.and_where(Expr::col(REFNAME).eq(old_one.name.clone()));
+                        query.and_where(Expr::col(ID).eq(old_one.id));
                         let (s, q) = build_sqlx_query(query).await?;
                         sqlx::query_with(&s, q).execute(&mut *tx).await?;
                     }
@@ -153,7 +153,7 @@ impl SqlFactory {
                     }
                 };
             } else {
-                query.and_where(Expr::col(REFNAME).eq(old_one.name.clone()));
+                query.and_where(Expr::col(ID).eq(old_one.id));
                 let (s, q) = build_sqlx_query(query).await?;
                 sqlx::query_with(&s, q).execute(&mut *tx).await?;
             }

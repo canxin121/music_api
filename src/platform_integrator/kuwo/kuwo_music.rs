@@ -305,7 +305,10 @@ impl ObjectSafeStore for KuwoMusic {
             need_update = true;
         }
         if origin.artist != info.artist {
-            query.value(StrIden(&ARTIST), info.artist.clone().join("&"));
+            query.value(
+                StrIden(&ARTIST),
+                serde_json::to_string(&info.artist)?,
+            );
             need_update = true;
         }
         if origin.duration != info.duration {
@@ -321,7 +324,7 @@ impl ObjectSafeStore for KuwoMusic {
             need_update = true;
         }
         if origin.lyric != info.lyric {
-            query.value(StrIden(&LYRIC), serde_json::to_string(&info.lyric).unwrap());
+            query.value(StrIden(&LYRIC), info.lyric.clone());
             need_update = true;
         }
         if info.default_quality.is_some() && origin.default_quality != info.default_quality {
