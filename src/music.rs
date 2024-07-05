@@ -109,5 +109,10 @@ pub trait ObjectSafeStore {
     // 生成将音乐插入数据库(原始音乐数据表)的Statement
     fn to_sql_insert(&self) -> InsertStatement;
     // 生成更新数据库(原始音乐数据表)中音乐数据的Statement
-    fn to_sql_update(&self, info: &MusicInfo) -> Result<UpdateStatement, anyhow::Error>;
+    fn to_sql_update(
+        &self,
+        info: &MusicInfo,
+    ) -> Pin<
+        Box<dyn std::future::Future<Output = Result<UpdateStatement, anyhow::Error>> + Send + '_>,
+    >;
 }

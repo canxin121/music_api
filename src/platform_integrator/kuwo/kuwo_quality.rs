@@ -30,7 +30,9 @@ impl KuWoQuality {
 pub(crate) fn process_qualities(qualities: Vec<KuWoQuality>) -> Vec<KuWoQuality> {
     let mut unique_qualities = qualities
         .into_iter()
-        .filter(|q| q.format != "mflac" && q.format != "zp" && q.format != "ogg")
+        .filter(|q| {
+            q.format != "mflac" && q.format != "zp" && q.format != "ogg" && q.format != "aac"
+        })
         .fold(std::collections::HashMap::new(), |mut acc, q| {
             acc.entry((q.format.clone(), q.bitrate)).or_insert(q);
             acc

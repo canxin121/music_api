@@ -7,12 +7,18 @@ use serde_json::json;
 use sqlx::{any::AnyRow, Row as _};
 
 use crate::{
-    factory::sql_factory::ObjectUnsafeStore,
+    factory::sql_factory::{ObjectUnsafeStore, POOL},
     music_list::MusicList,
     util::{build_sqlx_query, StrIden, StringIden},
     Music, MusicAggregator, MusicInfo, MusicInfoTrait, MusicTrait, ObjectSafeStore, Quality,
 };
-
+macro_rules! acquire_conn {
+    () => {{
+        let pool_lock = POOL.lock().await;
+        let pool = pool_lock.as_ref().unwrap();
+        pool.acquire().await?
+    }};
+}
 use super::{get_musics_from_album, wy_lyric::get_lyric, WANGYI};
 pub const ID_: &str = "ID_";
 pub const NAME: &str = "Name";
@@ -85,80 +91,125 @@ impl ObjectSafeStore for WyMusic {
     fn to_sql_update(
         &self,
         info: &crate::MusicInfo,
-    ) -> Result<sea_query::UpdateStatement, anyhow::Error> {
+    ) -> Pin<
+        Box<
+            dyn futures::Future<Output = Result<sea_query::UpdateStatement, anyhow::Error>>
+                + std::marker::Send
+                + '_,
+        >,
+    > {
+        let info = info.clone();
         let origin = self.get_music_info();
+        let id = self.get_primary_kv().1;
         let (k, v) = self.get_primary_kv();
         let mut binding = Query::update().clone();
-        let query = binding
+        let mut query = binding
             .table(StringIden(self.source()))
-            .and_where(Expr::col(StringIden(k.to_string())).eq(v));
+            .and_where(Expr::col(StringIden(k.to_string())).eq(v))
+            .to_owned();
 
         let mut need_update = false;
-
-        if origin.name != info.name {
-            query.value(StrIden(NAME), info.name.clone());
-            need_update = true;
-        }
-        if origin.artist != info.artist {
-            let new_artists: Vec<Artist> = info
-                .artist
-                .clone()
-                .into_iter()
-                .map(|a| Artist {
-                    id: 0,
-                    name: a,
-                    tns: Vec::with_capacity(0),
-                    alias: Vec::with_capacity(0),
-                    alia: Vec::with_capacity(0),
-                })
-                .collect();
-            query.value(
-                StrIden(ARTISTS),
-                serde_json::to_string(&new_artists).unwrap(),
-            );
-            need_update = true;
-        }
-        if origin.duration != info.duration {
-            query.value(StrIden(&DURATION), info.duration);
-            need_update = true;
-        }
-        if origin.album != info.album {
-            let new_album = Album {
-                id: 0,
-                name: info.album.clone().unwrap_or("".to_string()),
-                picUrl: Some("".to_string()),
-                tns: Vec::with_capacity(0),
-                pic_str: None,
-                pic: None,
-            };
-            query.value(StrIden(ALBUM), serde_json::to_string(&new_album)?);
-            need_update = true;
-        }
-        if origin.art_pic != info.art_pic {
-            if let Some(art_pic) = &info.art_pic {
-                query.value(StrIden(&ARTPIC), art_pic.clone());
+        Box::pin(async move {
+            if origin.name != info.name {
+                query.value(StrIden(NAME), info.name.clone());
+                need_update = true;
             }
-            need_update = true;
-        }
-        if origin.lyric != info.lyric {
-            if let Some(lyric) = &info.lyric {
-                query.value(StrIden(&LYRIC), lyric.clone());
+            if origin.artist != info.artist {
+                // 先获取原来的Artist
+                let mut conn = acquire_conn!();
+                let select_query = Query::select()
+                    .from(StrIden(WANGYI))
+                    .column(StrIden(ARTISTS))
+                    .and_where(Expr::col(StrIden(ID)).eq(id.parse::<i64>()?))
+                    .to_owned();
+                let (sql, values) = build_sqlx_query(select_query).await?;
+                let result = sqlx::query_with(&sql, values).fetch_one(&mut *conn).await?;
+                let result_string: String = result.try_get(0)?;
+                let origin_artists: Vec<Artist> =
+                    serde_json::from_str::<Vec<Artist>>(&result_string)?;
+                let mut new_artists: Vec<Artist> = info
+                    .artist
+                    .clone()
+                    .into_iter()
+                    .map(|a| Artist {
+                        id: 0,
+                        name: a,
+                        tns: Vec::with_capacity(0),
+                        alias: Vec::with_capacity(0),
+                        alia: Vec::with_capacity(0),
+                    })
+                    .collect();
+                // 除了info中能包含的，其余不进行修改
+                for origin_artist in origin_artists {
+                    // 如果新的info中有和原来的名字一样的，那么把原来的其他值也赋给他
+                    if let Some(new_artist) = new_artists
+                        .iter_mut()
+                        .find(|a| a.name == origin_artist.name)
+                    {
+                        new_artist.id = origin_artist.id;
+                        new_artist.tns = origin_artist.tns;
+                        new_artist.alias = origin_artist.alias;
+                        new_artist.alia = origin_artist.alia;
+                    }
+                }
+                query.value(
+                    StrIden(ARTISTS),
+                    serde_json::to_string(&new_artists).unwrap(),
+                );
+                need_update = true;
             }
-            need_update = true;
-        }
+            if origin.duration != info.duration {
+                query.value(StrIden(&DURATION), {
+                    match info.duration {
+                        Some(d) => d * 1000,
+                        None => 0,
+                    }
+                });
+                need_update = true;
+            }
+            if origin.album != info.album {
+                // 先获取原来的Album
+                let mut conn = acquire_conn!();
+                let select_query = Query::select()
+                    .from(StrIden(WANGYI))
+                    .column(StrIden(ALBUM))
+                    .and_where(Expr::col(StrIden(ID)).eq(id.parse::<i64>()?))
+                    .to_owned();
 
-        if info.default_quality.is_some() && origin.default_quality != info.default_quality {
-            query.value(
-                StrIden(&DEFAULT_QUALITY),
-                serde_json::to_string(&info.default_quality).unwrap(),
-            );
-            need_update = true;
-        }
-        if need_update {
-            Ok(query.clone())
-        } else {
-            Err(anyhow::anyhow!("No need to update"))
-        }
+                let (sql, values) = build_sqlx_query(select_query).await?;
+                let result = sqlx::query_with(&sql, values).fetch_one(&mut *conn).await?;
+                let result_string: String = result.try_get(0)?;
+                let mut origin_album = serde_json::from_str::<Album>(&result_string)?;
+                origin_album.name = info.album.clone().unwrap_or("".to_string());
+                query.value(StrIden(ALBUM), serde_json::to_string(&origin_album)?);
+                need_update = true;
+            }
+            if origin.art_pic != info.art_pic {
+                if let Some(art_pic) = &info.art_pic {
+                    query.value(StrIden(&ARTPIC), art_pic.clone());
+                }
+                need_update = true;
+            }
+            if origin.lyric != info.lyric {
+                if let Some(lyric) = &info.lyric {
+                    query.value(StrIden(&LYRIC), lyric.clone());
+                }
+                need_update = true;
+            }
+
+            if info.default_quality.is_some() && origin.default_quality != info.default_quality {
+                query.value(
+                    StrIden(&DEFAULT_QUALITY),
+                    serde_json::to_string(&info.default_quality).unwrap(),
+                );
+                need_update = true;
+            }
+            if need_update {
+                Ok(query.clone())
+            } else {
+                Err(anyhow::anyhow!("No need to update"))
+            }
+        })
     }
 }
 

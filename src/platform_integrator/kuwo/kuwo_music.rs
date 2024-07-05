@@ -173,6 +173,7 @@ impl MusicInfoTrait for KuwoMusic {
                     size: Some(quality.size.clone()),
                     short: format!("{}k{}", quality.bitrate, quality.format),
                 })
+                .filter(|q| !q.short.contains("aac"))
                 .collect::<Vec<Quality>>(),
             art_pic: {
                 if self.pic.is_empty() {
@@ -292,10 +293,18 @@ impl ObjectSafeStore for KuwoMusic {
         query
     }
 
-    fn to_sql_update(&self, info: &MusicInfo) -> Result<sea_query::UpdateStatement, anyhow::Error> {
+    fn to_sql_update(
+        &self,
+        info: &MusicInfo,
+    ) -> std::pin::Pin<
+        Box<
+            dyn futures::Future<Output = Result<sea_query::UpdateStatement, anyhow::Error>>
+                + std::marker::Send,
+        >,
+    > {
         let origin = self.get_music_info();
         let (k, v) = self.get_primary_kv();
-        let mut binding = Query::update().clone();
+        let mut binding = Query::update();
         let query = binding
             .table(StringIden(self.source()))
             .and_where(Expr::col(StringIden(k)).eq(v));
@@ -338,10 +347,11 @@ impl ObjectSafeStore for KuwoMusic {
             );
             need_update = true;
         }
+        let query = query.to_owned();
         if need_update {
-            Ok(query.clone())
+            Box::pin(async move { Ok(query.clone()) })
         } else {
-            Err(anyhow::anyhow!("No need to update"))
+            Box::pin(async move { Err(anyhow::anyhow!("No need to update")) })
         }
     }
 }

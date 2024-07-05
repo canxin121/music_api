@@ -380,7 +380,7 @@ impl SqlFactory {
         let mut tx = conn.begin().await?;
 
         for (music, info) in musics.into_iter().zip(new_infos.into_iter()) {
-            let query = music.to_sql_update(&info);
+            let query = music.to_sql_update(&info).await;
             match query {
                 Ok(query) => {
                     let (update_sql, update_values) = build_sqlx_query(query).await?;
