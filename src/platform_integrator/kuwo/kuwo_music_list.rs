@@ -4,11 +4,13 @@ use crate::music_aggregator::music_aggregator_online::SearchMusicAggregator;
 use crate::music_aggregator::MusicAggregator;
 use crate::music_list::{ExtraInfo, MusicList, MusicListTrait};
 use crate::util::CLIENT;
-use crate::{Music, MusicListInfo};
+use crate::{Music, MusicListInfo, OnlineFactory, ALL};
+use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 
 use urlencoding::encode;
 
+use super::kuwo_music_info::get_music_info;
 use super::util::decode_html_entities;
 use super::KUWO;
 use super::{
@@ -173,6 +175,28 @@ pub async fn get_musics_of_music_list(
     let mut musics = Vec::new();
     mem::swap(&mut musiclist.musiclist, &mut musics);
 
+    let mut fetch_pic_futures = Vec::new();
+    for music in &musics {
+        let music_rid = music.music_rid.clone();
+        fetch_pic_futures.push(async move {
+            match get_music_info(&music_rid).await {
+                Ok(info) => Some((music_rid, info.img)),
+                Err(_) => None,
+            }
+        });
+    }
+
+    let results = join_all(fetch_pic_futures).await;
+
+    let pic_map: std::collections::HashMap<String, String> =
+        results.into_iter().filter_map(|res| res).collect();
+
+    for music in &mut musics {
+        if let Some(pic) = pic_map.get(&music.music_rid) {
+            music.pic = pic.clone();
+        }
+    }
+
     let musics: Vec<Music> = musics
         .into_iter()
         .map(|mut music| {
@@ -190,15 +214,18 @@ pub async fn get_musics_of_music_list(
 
 #[tokio::test]
 async fn test_get_musics() {
-    let start_time = std::time::Instant::now();
-    let playlists = search_music_list("张惠妹", 1, 30).await.unwrap();
-    let first = playlists.first().unwrap();
-    let info = first.get_musiclist_info();
-    println!("{}", info);
-    let musics = first.get_music_aggregators(1, 30).await.unwrap();
-    musics.into_iter().for_each(|m| {
-        println!("{}", m.get_default_music().get_music_info());
+    let music_lists = OnlineFactory::search_musiclist(vec![ALL.to_string()], "张惠妹", 1, 30)
+        .await
+        .unwrap();
+
+    let musics = music_lists
+        .first()
+        .unwrap()
+        .get_music_aggregators(1, 30)
+        .await
+        .unwrap();
+
+    musics.iter().for_each(|m| {
+        println!("{:?}", m.get_default_music().get_music_info());
     });
-    let elapsed_time = start_time.elapsed();
-    println!("Elapsed time: {:?}", elapsed_time);
 }
