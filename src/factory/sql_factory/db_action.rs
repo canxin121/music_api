@@ -39,24 +39,38 @@ impl SqlFactory {
     pub async fn init_from_path(filepath: &str) -> Result<(), anyhow::Error> {
         install_default_drivers();
         let path = PathBuf::from(filepath);
-        if !path.exists() {
+        let exist = path.exists();
+        if !exist {
             File::create(&path).await?.shutdown().await?;
         }
         let database_url = format!("sqlite:{}", filepath);
         let pool = AnyPool::connect(&database_url).await?;
 
-        SqlFactory::init(pool).await?;
-        Ok(())
-    }
-
-    // 创建一个SqlMusicFactory，并自动升级数据库
-    pub async fn init(pool: AnyPool) -> Result<(), anyhow::Error> {
-        install_default_drivers();
         {
             let mut global_pool = POOL.lock().await;
             *global_pool = Some(pool);
         }
+        // 如果filepath不存在，则会创建所有表
+        if !exist {
+            SqlFactory::create_all_table().await?;
+        }
+        // 升级数据库
         SqlFactory::upgrade().await?;
+        Ok(())
+    }
+
+    pub async fn shutdown() -> Result<(), anyhow::Error> {
+        // 将连接池关闭
+        {
+            let pool_lock = POOL.lock().await;
+            let pool = pool_lock.as_ref().ok_or(anyhow::anyhow!("POOL is None"))?;
+            pool.close().await;
+        }
+        // 将全局连接池置空
+        {
+            let mut pool_lock = POOL.lock().await;
+            *pool_lock = None;
+        }
         Ok(())
     }
 
@@ -81,8 +95,9 @@ impl SqlFactory {
             // init_create_table即可完成所有工作，
             // 其内部会逐个创建所有的表(忽视中间的创建错误(已存在则会出错))+初始化数据库版本为1
             0 => {
-                SqlFactory::_update_refmetatable_add_column_index().await?;
                 SqlFactory::create_all_table().await?;
+                println!("Succeed to create all table");
+                SqlFactory::_update_refmetatable_add_column_index().await?;
             }
             _ => {}
         }
@@ -181,15 +196,26 @@ WHERE RefMetaData.RefName = seq.RefName;"#;
         Ok(())
     }
 }
+
 #[cfg(test)]
 mod test {
     use crate::SqlFactory;
 
     #[tokio::test]
+    async fn test_create() {
+        let path = r"_data\test.db";
+        // 如果path存在，则删除
+        if std::path::Path::new(path).exists() {
+            std::fs::remove_file(path).unwrap();
+        }
+        SqlFactory::init_from_path(r"_data\test.db").await.unwrap();
+    }
+
+    #[tokio::test]
     async fn test_update() {
-        SqlFactory::init_from_path(r"_data\version_0.db")
-            .await
-            .unwrap();
-        let _musiclists = SqlFactory::get_all_musiclists().await.unwrap();
+        let origin_path = r"_data\dbs\version_0.db";
+        let target_path = r"_data/test_update.db";
+        std::fs::copy(origin_path, target_path).unwrap();
+        SqlFactory::init_from_path(target_path).await.unwrap();
     }
 }
