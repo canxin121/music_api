@@ -36,14 +36,19 @@ impl SqlFactory {
     }
 
     // 从文件路径创建一个SqlMusicFactory，并自动升级数据库
-    pub async fn init_from_path(filepath: &str) -> Result<(), anyhow::Error> {
+    pub async fn init_from_path(filestr: &str) -> Result<(), anyhow::Error> {
         install_default_drivers();
-        let path = PathBuf::from(filepath);
+        let path = PathBuf::from(filestr);
+
         let exist = path.exists();
         if !exist {
             File::create(&path).await?.shutdown().await?;
         }
-        let database_url = format!("sqlite:{}", filepath);
+
+        let database_url = format!(
+            "sqlite:{}",
+            path.to_str().ok_or(anyhow::anyhow!("path error"))?
+        );
         let pool = AnyPool::connect(&database_url).await?;
 
         {
