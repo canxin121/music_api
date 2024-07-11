@@ -193,13 +193,7 @@ impl SqlFactory {
     }
 
     // 重新排序歌单
-    pub async fn reorder_musiclist(
-        new_full_index: &[i64],
-        full_ids_in_order: &[i64],
-    ) -> Result<(), anyhow::Error> {
-        if new_full_index.len() != full_ids_in_order.len() {
-            return Err(anyhow::anyhow!("Index and names length mismatch"));
-        }
+    pub async fn reorder_musiclist(new_ids: &[i64]) -> Result<(), anyhow::Error> {
         let mut conn = acquire_conn!();
         let mut tx = conn.begin().await?;
 
@@ -207,14 +201,14 @@ impl SqlFactory {
             .fetch_one(&mut *tx)
             .await?;
         let real_length: i64 = result.try_get(0)?;
-        if (real_length as usize) != new_full_index.len() {
+        if (real_length as usize) != new_ids.len() {
             return Err(anyhow::anyhow!("Indexs and musics has wrong length"));
         }
 
-        for (new_index, id) in new_full_index.into_iter().zip(full_ids_in_order) {
+        for (index, id) in new_ids.into_iter().enumerate() {
             let update_query = Query::update()
                 .table(REFMETADATA)
-                .value(INDEX, *new_index)
+                .value(INDEX, (index as i64) + 1)
                 .and_where(Expr::col(ID).eq(id.to_string()))
                 .to_owned();
             let (update_sql, update_values) = build_sqlx_query(update_query).await?;
