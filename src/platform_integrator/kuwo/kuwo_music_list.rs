@@ -4,7 +4,7 @@ use crate::music_aggregator::music_aggregator_online::SearchMusicAggregator;
 use crate::music_aggregator::MusicAggregator;
 use crate::music_list::{ExtraInfo, MusicList, MusicListTrait};
 use crate::util::CLIENT;
-use crate::{Music, MusicListInfo, OnlineFactory, ALL};
+use crate::{Music, MusicListInfo};
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 
@@ -214,7 +214,7 @@ pub async fn get_musics_of_music_list(
 
 #[tokio::test]
 async fn test_get_musics() {
-    let music_lists = OnlineFactory::search_musiclist(vec![ALL.to_string()], "张惠妹", 1, 30)
+    let music_lists = crate::OnlineFactory::search_musiclist(vec![crate::ALL.to_string()], "张惠妹", 1, 30)
         .await
         .unwrap();
 

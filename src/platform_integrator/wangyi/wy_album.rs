@@ -1,5 +1,3 @@
-use std::mem;
-
 use serde::Deserialize;
 use serde_json::json;
 
@@ -49,7 +47,7 @@ impl MusicListTrait for Album {
 
     fn get_music_aggregators(
         &self,
-        _page: u32,
+        page: u32,
         _limit: u32,
     ) -> std::pin::Pin<
         Box<
@@ -59,7 +57,14 @@ impl MusicListTrait for Album {
                 + '_,
         >,
     > {
-        Box::pin(async { Ok(Vec::with_capacity(0)) })
+        Box::pin(async move {
+            if page == 1 {
+                let (_music_list, musics) = get_musics_from_album(self.id).await?;
+                Ok(musics)
+            } else {
+                Ok(Vec::with_capacity(0))
+            }
+        })
     }
 }
 
@@ -75,6 +80,7 @@ pub async fn get_musics_from_album(
         .form(&weapi(&data)?)
         .send()
         .await?;
+
     let mut resp = resp.json::<AlbumResponse>().await?;
     resp.songs.iter_mut().for_each(|s| {
         s.default_quality = s.get_highest_quality();
