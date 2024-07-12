@@ -407,7 +407,7 @@ pub struct WyMusic {
     sq: Option<AudioQuality>,
     hr: Option<AudioQuality>,
     #[serde(default)]
-    artpic: Option<String>,
+    pub artpic: Option<String>,
     #[serde(default)]
     lyric: Option<String>,
     pub default_quality: Option<Quality>,

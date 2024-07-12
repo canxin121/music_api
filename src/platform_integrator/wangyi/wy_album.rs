@@ -84,7 +84,11 @@ pub async fn get_musics_from_album(
     let mut resp = resp.json::<AlbumResponse>().await?;
     resp.songs.iter_mut().for_each(|s| {
         s.default_quality = s.get_highest_quality();
+        if s.artpic.is_none() {
+            s.artpic = Some(resp.album.pic_url.clone());
+        }
     });
+
     let musics = resp
         .songs
         .into_iter()
