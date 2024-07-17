@@ -269,7 +269,7 @@ impl SqlFactory {
                 continue;
             }
             // 查询表中的行数
-            let query = format!("SELECT COUNT(*) AS count FROM {}", table_name);
+            let query = format!("SELECT COUNT(*) AS count FROM \"{}\"", table_name);
             let count: (i64,) = sqlx::query_as(&query).fetch_one(&mut *tx).await?;
 
             // 如果行数为 0，则删除该表
@@ -415,7 +415,7 @@ mod test {
         let all_music_lists = SqlFactory::get_all_musiclists().await.unwrap();
         assert_eq!(all_music_lists.len(), 0);
     }
-    
+
     #[tokio::test]
     async fn test_clean_unused_musiclist() {
         let path = r"_data\test.db";
@@ -426,7 +426,7 @@ mod test {
         SqlFactory::init_from_path(r"_data\test.db").await.unwrap();
         SqlFactory::create_musiclist(
             &[MusicListInfo {
-                name: "test".to_string(),
+                name: r"abc &|/\asd31x".to_string(),
                 desc: "".to_string(),
                 art_pic: "".to_string(),
                 extra: None,
