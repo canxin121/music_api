@@ -6,7 +6,7 @@ use std::{fmt::Display, pin::Pin};
 use futures::Future;
 
 use crate::{
-    filter::{MusicFilter as _, MusicFuzzFilter},
+    filter::{fuzzy_match, MusicFilter as _, MusicFuzzFilter},
     music_list::MusicList,
     Music,
 };
@@ -27,6 +27,21 @@ impl Display for MusicAggregator {
         )
     }
 }
+
+impl PartialEq for MusicAggregator {
+    fn eq(&self, other: &Self) -> bool {
+        let self_info = self.get_default_music().get_music_info();
+        let other_info = other.get_default_music().get_music_info();
+        if !fuzzy_match(&self_info.name, &other_info.name) {
+            return false;
+        }
+        if self_info.artist != other_info.artist {
+            return false;
+        }
+        true
+    }
+}
+
 // get => 直接返回实例内部或者sql本地的
 // fetch => 实例内部不存在则从网络获取(会插入到实例内部和sql本地)
 pub trait MusicAggregatorTrait {
@@ -45,6 +60,25 @@ pub trait MusicAggregatorTrait {
 
     // 判断一个Music是否属于此MusicAggregator
     fn belong_to(&self, music: &Music) -> bool;
+
+    // 合并两个MusicAggregator
+    fn join(
+        &mut self,
+        other: MusicAggregator,
+    ) -> Pin<Box<dyn Future<Output = Result<(), anyhow::Error>> + Send + '_>>
+    where
+        Self: std::marker::Send,
+    {
+        Box::pin(async move {
+            let musics = other.get_all_musics();
+            for music in musics {
+                if self.get_music(&music.source()).await.is_none() {
+                    self.add_music(music.clone_()).await?;
+                }
+            }
+            Ok(())
+        })
+    }
 
     // 判断一个Music是否符合过滤器
     fn match_filter(&self, filter: &MusicFuzzFilter) -> bool {

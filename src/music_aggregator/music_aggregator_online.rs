@@ -1,4 +1,4 @@
-use std::{collections::HashMap, pin::Pin};
+use std::{collections::HashMap, mem, pin::Pin};
 
 use futures::Future;
 
@@ -164,6 +164,23 @@ impl MusicAggregatorTrait for SearchMusicAggregator {
     > {
         Box::pin(async move { Ok(self.get_default_music().fetch_album(page, limit).await?) })
     }
+}
+
+pub async fn merge_music_aggregators(
+    aggregators: Vec<MusicAggregator>,
+) -> Result<Vec<MusicAggregator>, anyhow::Error> {
+    let mut result: Vec<MusicAggregator> = Vec::new();
+    for aggregator in aggregators {
+        match result.iter_mut().find(|a| *a == &aggregator) {
+            Some(result_agg) => {
+                result_agg.join(aggregator).await?;
+            }
+            None => {
+                result.push(aggregator);
+            }
+        }
+    }
+    Ok(result)
 }
 
 #[cfg(test)]

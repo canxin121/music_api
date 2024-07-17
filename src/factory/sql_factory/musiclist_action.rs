@@ -2,9 +2,10 @@ use sea_query::{ColumnDef, Cond, Expr, InsertStatement, Query, Table, TableCreat
 use sqlx::{Acquire as _, Row as _};
 
 use crate::{
+    music_aggregator::music_aggregator_online::merge_music_aggregators,
     music_list::MusicList,
     util::{build_query, build_sqlx_query, StrIden, StringIden},
-    MusicListInfo,
+    MusicAggregator, MusicListInfo,
 };
 
 use super::{
@@ -235,6 +236,18 @@ impl SqlFactory {
             sqlx::query(&s).execute(&mut *tx).await?;
         }
         tx.commit().await?;
+        Ok(())
+    }
+
+    // 删除歌单中的重复音乐
+    pub async fn del_duplicate_musics_of_musiclist(
+        musiclist_info: &MusicListInfo,
+    ) -> Result<(), anyhow::Error> {
+        let aggs = SqlFactory::get_all_musics(musiclist_info).await?;
+        let merged_aggs = merge_music_aggregators(aggs).await?;
+        SqlFactory::del_musiclist(&[musiclist_info.name.as_str()]).await?;
+        SqlFactory::create_musiclist(&vec![musiclist_info.clone()]).await?;
+        SqlFactory::add_musics(&musiclist_info.name, &merged_aggs.iter().collect()).await?;
         Ok(())
     }
 }

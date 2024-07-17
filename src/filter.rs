@@ -37,7 +37,7 @@ impl MusicFilter for MusicFuzzFilter {
     }
 }
 
-fn fuzzy_match(filter: &str, target: &str) -> bool {
+pub fn fuzzy_match(filter: &str, target: &str) -> bool {
     if filter.len() == target.len() {
         filter == target
     } else if filter.len() > target.len() {
