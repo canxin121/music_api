@@ -1,4 +1,4 @@
-use std::{collections::HashMap, mem, pin::Pin};
+use std::{collections::HashMap, pin::Pin};
 
 use futures::Future;
 

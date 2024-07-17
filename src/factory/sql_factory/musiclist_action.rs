@@ -5,12 +5,12 @@ use crate::{
     music_aggregator::music_aggregator_online::merge_music_aggregators,
     music_list::MusicList,
     util::{build_query, build_sqlx_query, StrIden, StringIden},
-    MusicAggregator, MusicListInfo,
+    MusicListInfo, KUWO, WANGYI,
 };
 
 use super::{
-    sql_musiclist::SqlMusicList, SqlFactory, DEFAULTSOURCE, ID, INDEX, POOL, REFARTPIC, REFDESC,
-    REFMETADATA, REFNAME, REFS,
+    sql_musiclist::SqlMusicList, SqlFactory, DEFAULTSOURCE, ID, INDEX, METADATA, POOL, REFARTPIC,
+    REFDESC, REFMETADATA, REFNAME, REFS,
 };
 macro_rules! acquire_conn {
     () => {{
@@ -250,6 +250,50 @@ impl SqlFactory {
         SqlFactory::add_musics(&musiclist_info.name, &merged_aggs.iter().collect()).await?;
         Ok(())
     }
+    pub async fn clean_unused_musiclist() -> Result<(), anyhow::Error> {
+        let mut conn = acquire_conn!();
+        let mut tx = conn.begin().await?;
+        // 获取所有表名
+        let rows = sqlx::query("SELECT name FROM sqlite_master WHERE type='table'")
+            .fetch_all(&mut *tx)
+            .await?;
+        let mut to_delete = Vec::new();
+        for row in rows {
+            let table_name: String = row.get("name");
+            if table_name == "sqlite_sequence"
+                || table_name == WANGYI
+                || table_name == KUWO
+                || table_name == METADATA.0
+                || table_name == REFMETADATA.0
+            {
+                continue;
+            }
+            // 查询表中的行数
+            let query = format!("SELECT COUNT(*) AS count FROM {}", table_name);
+            let count: (i64,) = sqlx::query_as(&query).fetch_one(&mut *tx).await?;
+
+            // 如果行数为 0，则删除该表
+            if count.0 == 0 {
+                to_delete.push(table_name);
+            }
+        }
+        tx.commit().await?;
+        for table_name in to_delete {
+            if SqlFactory::del_musiclist(&vec![table_name.as_str()])
+                .await
+                .is_err()
+            {
+                let mut conn = acquire_conn!();
+                let drop_table_query = Table::drop()
+                    .table(StringIden(table_name))
+                    .if_exists()
+                    .to_owned();
+                let s = build_query(drop_table_query).await?;
+                sqlx::query(&s).execute(&mut *conn).await?;
+            }
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -370,5 +414,28 @@ mod test {
             .unwrap();
         let all_music_lists = SqlFactory::get_all_musiclists().await.unwrap();
         assert_eq!(all_music_lists.len(), 0);
+    }
+    
+    #[tokio::test]
+    async fn test_clean_unused_musiclist() {
+        let path = r"_data\test.db";
+        // 如果path存在，则删除
+        if std::path::Path::new(path).exists() {
+            std::fs::remove_file(path).unwrap();
+        }
+        SqlFactory::init_from_path(r"_data\test.db").await.unwrap();
+        SqlFactory::create_musiclist(
+            &[MusicListInfo {
+                name: "test".to_string(),
+                desc: "".to_string(),
+                art_pic: "".to_string(),
+                extra: None,
+                id: 0,
+            }]
+            .to_vec(),
+        )
+        .await
+        .unwrap();
+        SqlFactory::clean_unused_musiclist().await.unwrap();
     }
 }
