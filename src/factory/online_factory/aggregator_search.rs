@@ -22,27 +22,23 @@ impl AggregatorOnlineFactory {
     }
 
     pub fn get_aggregator_refs(&self) -> Vec<&MusicAggregator> {
-        self.aggregators.iter().map(|x| x).collect()
+        self.aggregators.iter().collect()
     }
 
-    pub(crate) async fn insert_musics(&mut self, mut musics: Vec<Music>) {
-        let mut left_musics = Vec::new();
-        for music in musics.drain(..) {
+    pub(crate) async fn insert_musics(&mut self, musics: Vec<Music>) {
+        for music in musics {
             let mut inserted = false;
-            for collection in self.aggregators.iter_mut() {
-                if collection.belong_to(&music) {
-                    collection.add_music(music.clone_()).await.ok();
+            for agg in self.aggregators.iter_mut() {
+                if agg.belong_to(&music) {
+                    agg.add_music(music.clone()).await.ok();
                     inserted = true;
                     break;
                 }
             }
             if !inserted {
-                left_musics.push(music);
+                let agg = SearchMusicAggregator::from_music(music);
+                self.aggregators.push(Box::new(agg));
             }
-        }
-        for music in left_musics {
-            let collection = SearchMusicAggregator::from_music(music);
-            self.aggregators.push(Box::new(collection));
         }
     }
 
@@ -155,6 +151,7 @@ impl AggregatorOnlineFactory {
         Ok(())
     }
 }
+
 #[cfg(test)]
 mod tests {
     use crate::factory::online_factory::AggregatorOnlineFactory;
@@ -180,9 +177,40 @@ mod tests {
             )
             .await
             .unwrap();
-        let aggregators = aggregator_factory.aggregators;
+        let aggregators = &aggregator_factory.aggregators;
         for (i, aggregator) in aggregators.iter().enumerate() {
             println!("{i}.{}", aggregator);
+        }
+        let origin_aggregators = aggregator_factory.aggregators.clone();
+        aggregator_factory
+            .search_music_aggregator(
+                &[ALL.to_string()],
+                "张惠妹",
+                2,
+                50,
+                Some(&MusicFuzzFilter {
+                    name: None,
+                    artist: vec!["张惠妹".to_string()],
+                    album: None,
+                }),
+            )
+            .await
+            .unwrap();
+        let aggregators = &aggregator_factory.aggregators;
+        for (i, aggregator) in aggregators.iter().enumerate() {
+            println!("{i}.{}", aggregator);
+        }
+        for (i, (origin, aggregator)) in origin_aggregators
+            .iter()
+            .zip(aggregators.iter())
+            .enumerate()
+        {
+            assert_eq!(
+                origin.get_default_music().get_music_info().name,
+                aggregator.get_default_music().get_music_info().name,
+                "index:{}",
+                i
+            );
         }
     }
     #[tokio::test]

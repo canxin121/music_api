@@ -1,10 +1,9 @@
-use strsim::levenshtein;
-
 use crate::MusicInfo;
 
 pub trait MusicFilter {
     fn matches(&self, info: &MusicInfo) -> bool;
 }
+
 #[derive(Debug, Clone)]
 pub struct MusicFuzzFilter {
     pub name: Option<String>,
@@ -18,18 +17,16 @@ unsafe impl Sync for MusicFuzzFilter {}
 impl MusicFilter for MusicFuzzFilter {
     fn matches(&self, info: &MusicInfo) -> bool {
         if let Some(name) = &self.name {
-            if levenshtein(&info.name, name) > 2 {
+            if !fuzzy_match(name, &info.name) {
                 return false;
             }
         }
-        if !self.artist.is_empty() {
-            if self.artist != info.artist {
-                return false;
-            }
+        if !self.artist.is_empty() && self.artist != info.artist {
+            return false;
         }
         if let Some(album) = &self.album {
-            if let Some(albulm_) = info.album.as_ref() {
-                if levenshtein(albulm_, album) > 2 {
+            if let Some(info_album) = &info.album {
+                if !fuzzy_match(album, info_album) {
                     return false;
                 }
             } else {
@@ -37,5 +34,15 @@ impl MusicFilter for MusicFuzzFilter {
             }
         }
         true
+    }
+}
+
+fn fuzzy_match(filter: &str, target: &str) -> bool {
+    if filter.len() == target.len() {
+        filter == target
+    } else if filter.len() > target.len() {
+        filter.contains(target)
+    } else {
+        target.contains(filter)
     }
 }

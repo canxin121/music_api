@@ -111,8 +111,16 @@ impl MusicAggregatorTrait for SearchMusicAggregator {
     }
 
     fn belong_to(&self, music: &Music) -> bool {
+        if self.musics.contains_key(&music.source()) {
+            return false;
+        }
         let info = music.get_music_info();
-        self.filter.matches(&info)
+        if self.filter.matches(&info) {
+            if let Some(name) = &self.filter.name {
+                return name.len() == info.name.len();
+            }
+        }
+        false
     }
 
     fn add_music(
