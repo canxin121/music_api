@@ -245,11 +245,18 @@ impl SqlFactory {
     ) -> Result<(), anyhow::Error> {
         let aggs = SqlFactory::get_all_musics(musiclist_info).await?;
         let merged_aggs = merge_music_aggregators(aggs).await?;
-        SqlFactory::del_musiclist(&[musiclist_info.name.as_str()]).await?;
-        SqlFactory::create_musiclist(&vec![musiclist_info.clone()]).await?;
+        {
+            let mut conn = acquire_conn!();
+            let query = Query::delete()
+                .from_table(StringIden(musiclist_info.name.clone()))
+                .to_owned();
+            let (s, v) = build_sqlx_query(query).await?;
+            sqlx::query_with(&s, v).execute(&mut *conn).await?;
+        }
         SqlFactory::add_musics(&musiclist_info.name, &merged_aggs.iter().collect()).await?;
         Ok(())
     }
+
     pub async fn clean_unused_musiclist() -> Result<(), anyhow::Error> {
         let mut conn = acquire_conn!();
         let mut tx = conn.begin().await?;
@@ -300,6 +307,7 @@ impl SqlFactory {
 mod test {
     use crate::factory::sql_factory::SqlFactory;
     use crate::music_list::{ExtraInfo, MusicListInfo};
+    use crate::{AggregatorOnlineFactory, ALL};
     use tokio::test;
 
     #[test]
@@ -437,5 +445,40 @@ mod test {
         .await
         .unwrap();
         SqlFactory::clean_unused_musiclist().await.unwrap();
+    }
+    
+    #[tokio::test]
+    async fn test_del_duplicate_musics_of_musiclist() {
+        let path = r"_data\test.db";
+        // 如果path存在，则删除
+        if std::path::Path::new(path).exists() {
+            std::fs::remove_file(path).unwrap();
+        }
+        SqlFactory::init_from_path(r"_data\test.db").await.unwrap();
+        let musiclist_info = MusicListInfo {
+            name: r"test".to_string(),
+            desc: "".to_string(),
+            art_pic: "".to_string(),
+            extra: None,
+            id: 0,
+        };
+        SqlFactory::create_musiclist(&[musiclist_info.clone()].to_vec())
+            .await
+            .unwrap();
+        let mut agg_search = AggregatorOnlineFactory::new();
+        agg_search
+            .search_music_aggregator(&[ALL.to_string()], "周杰伦", 1, 50, None)
+            .await
+            .unwrap();
+        agg_search
+            .search_music_aggregator(&[ALL.to_string()], "周杰伦", 2, 50, None)
+            .await
+            .unwrap();
+        SqlFactory::add_musics(&musiclist_info.name, &agg_search.get_aggregator_refs())
+            .await
+            .unwrap();
+        SqlFactory::del_duplicate_musics_of_musiclist(&musiclist_info)
+            .await
+            .unwrap();
     }
 }
