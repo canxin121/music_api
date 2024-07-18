@@ -3,13 +3,16 @@ use std::{collections::HashMap, pin::Pin};
 use futures::Future;
 
 use crate::{
-    factory::{online_factory::aggregator_search, sql_factory::SqlFactory},
+    factory::sql_factory::SqlFactory,
     filter::{MusicFilter, MusicFuzzFilter},
     platform_integrator::{ALL, PLATFORM_NUM},
     Music, MusicListInfo,
 };
 
-use super::{MusicAggregator, MusicAggregatorTrait};
+use super::{
+    music_aggregator_online::find_best_match_music_aggregator, MusicAggregator,
+    MusicAggregatorTrait,
+};
 
 // sql查询的到的本地音乐合集，需对sql储存负责
 #[derive(Clone)]
@@ -20,7 +23,6 @@ pub struct SqlMusicAggregator {
     pub music_list_info: MusicListInfo,
     pub filter: MusicFuzzFilter,
     pub default_source: String,
-    pub available_sources: Vec<String>,
     pub musics: HashMap<String, Music>,
 }
 
@@ -29,7 +31,6 @@ impl SqlMusicAggregator {
         id: i64,
         music_list_info: MusicListInfo,
         default_source: String,
-        available_sources: Vec<String>,
         musics: Vec<Music>,
     ) -> Self {
         let default_music = musics
@@ -50,7 +51,6 @@ impl SqlMusicAggregator {
             default_source,
             musics: musics_map,
             music_list_info,
-            available_sources,
             id,
         }
     }
@@ -65,7 +65,7 @@ impl MusicAggregatorTrait for SqlMusicAggregator {
     }
 
     fn get_available_sources(&self) -> Vec<String> {
-        self.available_sources.clone()
+        self.musics.keys().map(|s| s.to_string()).collect()
     }
 
     fn get_default_source(&self) -> String {
@@ -79,7 +79,7 @@ impl MusicAggregatorTrait for SqlMusicAggregator {
     {
         let source = source.to_string();
         Box::pin(async move {
-            if self.available_sources.contains(&source) {
+            if self.get_available_sources().contains(&source) {
                 SqlFactory::change_music_default_source(
                     &self.music_list_info.name,
                     vec![self.id],
@@ -100,7 +100,7 @@ impl MusicAggregatorTrait for SqlMusicAggregator {
     ) -> Pin<Box<dyn Future<Output = Option<&Music>> + Send + '_>> {
         let source = source.to_string();
 
-        if !self.available_sources.contains(&source) {
+        if !self.get_available_sources().contains(&source) {
             return Box::pin(async { None });
         }
 
@@ -132,7 +132,7 @@ impl MusicAggregatorTrait for SqlMusicAggregator {
         // 如果self.musics不包含所有可用源的音乐，需要从数据库中获取
         Box::pin(async move {
             // 实例内不包含sql中的所有音乐，则从sql中获取
-            if self.musics.len() != self.available_sources.len() {
+            if self.musics.len() != self.get_available_sources().len() {
                 // 直接获取所有源
                 let aggregator =
                     SqlFactory::get_music_by_id(&self.music_list_info, self.id, &[ALL]).await?;
@@ -145,28 +145,15 @@ impl MusicAggregatorTrait for SqlMusicAggregator {
             }
             // 从sql中获取的音乐不包含所有源，需要从网络获取，但是不一定成功
             if self.musics.len() != PLATFORM_NUM {
-                let mut aggregator_search = aggregator_search::AggregatorOnlineFactory::new();
-                aggregator_search
-                    .search_music_aggregator(
-                        &sources,
-                        &format!("{} {}", info.name, info.artist.join(" ")),
-                        1,
-                        5,
-                        Some(&self.filter),
-                    )
-                    .await?;
-                if let Some(first) = aggregator_search.aggregators.into_iter().next() {
-                    let musics = first.get_all_musics_owned();
-                    for music in musics {
-                        self.add_music(music).await?;
-                    }
-                    SqlFactory::replace_musics(
-                        &self.music_list_info.name,
-                        vec![self.id],
-                        vec![self.clone_()],
-                    )
-                    .await?;
-                }
+                let agg =
+                    find_best_match_music_aggregator(&info, &sources, Some(&self.filter)).await?;
+                self.join(agg).await?;
+                SqlFactory::replace_musics(
+                    &self.music_list_info.name,
+                    vec![self.id],
+                    vec![self.clone_()],
+                )
+                .await?;
             }
             Ok(self.musics.values().collect())
         })

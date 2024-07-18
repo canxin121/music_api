@@ -31,7 +31,7 @@ impl SearchMusicAggregator {
         let mut musics = HashMap::new();
         musics.insert(info.source.to_string(), music);
         Self {
-            filter: filter,
+            filter,
             default_source: info.source.to_string(),
             musics,
         }
@@ -83,29 +83,8 @@ impl MusicAggregatorTrait for SearchMusicAggregator {
     > {
         let info = self.get_default_music().get_music_info();
         Box::pin(async move {
-            let mut aggregator_search = aggregator_search::AggregatorOnlineFactory::new();
-            aggregator_search
-                .search_music_aggregator(
-                    &sources,
-                    &format!("{} {}", info.name, info.artist.join(" ")),
-                    1,
-                    30,
-                    Some(&self.filter),
-                )
-                .await?;
-
-            let first = aggregator_search
-                .aggregators
-                .into_iter()
-                .next()
-                .ok_or(anyhow::anyhow!(
-                    "No music found for \"{}\" after online search",
-                    info.name
-                ))?;
-            let musics = first.get_all_musics_owned();
-            for music in musics.into_iter() {
-                self.add_music(music).await?;
-            }
+            let agg = find_best_match_music_aggregator(&info, &sources, Some(&self.filter)).await?;
+            self.join(agg).await?;
             Ok(self.get_all_musics())
         })
     }
@@ -181,6 +160,45 @@ pub async fn merge_music_aggregators(
         }
     }
     Ok(result)
+}
+
+pub async fn find_best_match_music_aggregator(
+    info: &crate::MusicInfo,
+    sources: &[String],
+    filter: Option<&(dyn MusicFilter + Send + Sync)>,
+) -> Result<MusicAggregator, anyhow::Error> {
+    let mut aggregator_search = aggregator_search::AggregatorOnlineFactory::new();
+    aggregator_search
+        .search_music_aggregator(
+            sources,
+            &format!("{} {}", info.name, info.artist.join(" ")),
+            1,
+            50,
+            filter,
+        )
+        .await?;
+    let mut best_match: Option<MusicAggregator> = None;
+    // 名称长度相同的优先
+    // 名称长度更长的次之
+    // 否则取第一个
+    if aggregator_search.aggregators.len() > 0 {
+        if let Some(best) = aggregator_search
+            .aggregators
+            .iter()
+            .find(|a| a.get_default_music().get_music_info().name.len() == info.name.len())
+        {
+            best_match = Some(best.clone());
+        } else if let Some(best) = aggregator_search
+            .aggregators
+            .iter()
+            .find(|a| a.get_default_music().get_music_info().name.len() > info.name.len())
+        {
+            best_match = Some(best.clone());
+        } else if let Some(first) = aggregator_search.aggregators.first() {
+            best_match = Some(first.clone());
+        }
+    }
+    best_match.ok_or(anyhow::anyhow!("No music aggregator found"))
 }
 
 #[cfg(test)]

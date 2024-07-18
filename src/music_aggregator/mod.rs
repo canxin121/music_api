@@ -70,11 +70,9 @@ pub trait MusicAggregatorTrait {
         Self: std::marker::Send,
     {
         Box::pin(async move {
-            let musics = other.get_all_musics();
+            let musics = other.get_all_musics_owned();
             for music in musics {
-                if self.get_music(&music.source()).await.is_none() {
-                    self.add_music(music.clone_()).await?;
-                }
+                self.add_music(music).await?;
             }
             Ok(())
         })

@@ -21,9 +21,6 @@ impl MusicFilter for MusicFuzzFilter {
                 return false;
             }
         }
-        if !self.artist.is_empty() && self.artist != info.artist {
-            return false;
-        }
         if let Some(album) = &self.album {
             if let Some(info_album) = &info.album {
                 if !fuzzy_match(album, info_album) {
@@ -33,16 +30,33 @@ impl MusicFilter for MusicFuzzFilter {
                 return false;
             }
         }
+        // 先to_lowercase再比较
+        let self_artist = self
+            .artist
+            .iter()
+            .map(|s| s.to_lowercase())
+            .collect::<Vec<String>>();
+        let info_artist = info
+            .artist
+            .iter()
+            .map(|s| s.to_lowercase())
+            .collect::<Vec<String>>();
+
+        for artist in &self_artist {
+            if !info_artist.contains(&artist) {
+                return false;
+            }
+        }
         true
     }
 }
 
 pub fn fuzzy_match(filter: &str, target: &str) -> bool {
     if filter.len() == target.len() {
-        filter == target
+        filter.to_lowercase() == target.to_lowercase()
     } else if filter.len() > target.len() {
-        filter.contains(target)
+        filter.to_lowercase().contains(&target.to_lowercase())
     } else {
-        target.contains(filter)
+        target.to_lowercase().contains(&filter.to_lowercase())
     }
 }

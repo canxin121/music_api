@@ -205,7 +205,6 @@ impl SqlFactory {
                 row.try_get(ID.0)?,
             );
             let music_refs: Vec<Ref> = serde_json::from_str(&refs)?;
-            let sources = music_refs.iter().map(|r| r.t.clone()).collect::<Vec<_>>();
 
             if let Some(selected) = music_refs.iter().find(|r| r.t == default_source) {
                 let data_query = Query::select()
@@ -225,7 +224,6 @@ impl SqlFactory {
                                 id,
                                 musiclist_info.clone(),
                                 default_source.clone(),
-                                sources.clone(),
                                 vec![music],
                             )
                         }),
@@ -234,7 +232,6 @@ impl SqlFactory {
                                 id,
                                 musiclist_info.clone(),
                                 default_source.clone(),
-                                sources.clone(),
                                 vec![music],
                             )
                         }),
@@ -315,7 +312,6 @@ impl SqlFactory {
             id,
             music_list_info.clone(),
             sources.first().unwrap().to_string(),
-            refs.iter().map(|r| r.t.clone()).collect(),
             musics,
         );
         Ok(Box::new(music_aggregator))
