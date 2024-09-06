@@ -7,33 +7,39 @@ edition = "2021"
 
 [dependencies]
 aes = "0.8.4"
-anyhow = "1.0.82"
+anyhow = "1.0.86"
+async-trait = "0.1.82"
 base64 = "0.22.1"
 cbc = "0.1.2"
 crypto = "0.5.1"
 ecb = "0.1.2"
-env_logger = "0.11.3"
+env_logger = "0.11.5"
 futures = "0.3.30"
-generic-array = "1.0.0"
+generic-array = "1.1.0"
 hex = "0.4.3"
-lazy_static = "1.4.0"
-log = "0.4.21"
+lazy_static = "1.5.0"
+log = "0.4.22"
 md-5 = "0.10.6"
 rand = "0.8.5"
-regex = "1.10.5"
-reqwest = { version = "0.12.4", features = [
+regex = "1.10.6"
+reqwest = { version = "0.12.7", features = [
     "json",
     "rustls-tls",
     "rustls-tls-webpki-roots",
 ], default-features = false }
-reqwest-middleware = "0.3.1"
-reqwest-retry = "0.5.0"
+reqwest-middleware = "0.3.3"
+reqwest-retry = "0.6.1"
 rsa = { version = "0.9.6", features = ["hazmat"] }
-sea-query = { version = "0.30.7" }
-sea-query-binder = { version = "0.5.0", features = ["sqlx-any", "sqlx-sqlite"] }
-serde = { version = "1.0.198", features = ["derive"] }
-serde_json = "1.0.116"
+sea-orm = { version = "1.0.1", default-features = false, features = ["sqlx-sqlite", "runtime-tokio-rustls", "serde_json", "with-json"] }
+sea-orm-migration = { version = "1.0.1", features = [
+    "sqlx-sqlite",
+    "runtime-tokio-rustls",
+], default-features = false }
+sea-query = { version = "0.31.0" }
+sea-query-binder = { version = "0.6.0", features = ["sqlx-any", "sqlx-sqlite"] }
+serde = { version = "1.0.209", features = ["derive"] }
+serde_json = "1.0.128"
 sha2 = "0.10.8"
-sqlx = { version = "0.7.4", features = ["runtime-tokio", "sqlite"] }
-tokio = { version = "1.37.0", features = ["full"] }
+# sqlx = { version = "0.8.2", features = ["runtime-tokio", "sqlite"] }
+tokio = { version = "1.40.0", features = ["full"] }
 urlencoding = "2.1.3"

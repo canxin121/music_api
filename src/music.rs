@@ -34,26 +34,6 @@ impl Display for Quality {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MusicInfo {
-    // 与歌曲/平台本身无关的id，代表的仅仅是其在当前 自定义歌单 中的id
-    pub id: i64,
-    // 歌曲的来源平台
-    pub source: String,
-    // 歌曲的名字
-    pub name: String,
-    // 歌曲的演唱者的集合
-    pub artist: Vec<String>,
-    // 歌曲的时长(s)
-    pub duration: Option<u32>,
-    // 歌曲的专辑的名称
-    pub album: Option<String>,
-    // 歌曲的可选音质
-    pub qualities: Vec<Quality>,
-    // 歌曲默认选取的音质，可以作为本地持久储存，来为实现每首歌的默认音质均可自定义的功能
-    pub default_quality: Option<Quality>,
-    // 歌曲的艺术照
-    pub art_pic: Option<String>,
-    // 歌曲的歌词
-    pub lyric: Option<String>,
 }
 
 impl Display for MusicInfo {

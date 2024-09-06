@@ -17,11 +17,13 @@ pub trait MusicListTrait {
         limit: u32,
     ) -> Pin<Box<dyn Future<Output = Result<Vec<MusicAggregator>, anyhow::Error>> + Send + '_>>;
 }
+
 impl Display for MusicList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.get_musiclist_info())
     }
 }
+
 #[derive(Debug, Clone)]
 pub struct MusicListInfo {
     pub name: String,
