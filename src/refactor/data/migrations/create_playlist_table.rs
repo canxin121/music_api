@@ -1,7 +1,10 @@
 use async_trait::async_trait;
-use sea_orm_migration::{prelude::*, schema::pk_auto};
+use sea_orm_migration::{
+    prelude::*,
+    schema::{pk_auto, string, string_null},
+};
 
-use crate::refactor::data::models::music_aggregator::Column;
+use crate::refactor::data::models::playlist::Column;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -12,8 +15,11 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(MusicTable::Music)
+                    .table(PlaylistTable::Playlist)
                     .col(pk_auto(Column::Id))
+                    .col(string(Column::Name))
+                    .col(string_null(Column::Summary))
+                    .col(string_null(Column::Cover))
                     .if_not_exists()
                     .to_owned(),
             )
@@ -22,12 +28,12 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(MusicTable::Music).to_owned())
+            .drop_table(Table::drop().table(PlaylistTable::Playlist).to_owned())
             .await
     }
 }
 
 #[derive(DeriveIden)]
-pub enum MusicTable {
-    Music,
+pub enum PlaylistTable {
+    Playlist,
 }

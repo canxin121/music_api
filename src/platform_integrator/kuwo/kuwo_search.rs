@@ -22,21 +22,13 @@ pub async fn search_single_music(
 
     let music_futures = musics.abslist.into_iter().map(|music| {
         task::spawn(async move {
-            // 并行运行 get_pic_url, get_lrc 和 parse_quality
-            let (
-                pic_result,
-                //  lyric_result
-                quality_result,
-            ) = join!(
-                get_pic_url(&music.music_rid),
-                // get_lrc(&music.music_rid),
-                async {
-                    let mut qualities: Vec<KuWoQuality> = KuWoQuality::parse_quality(&music.minfo);
-                    qualities.append(&mut KuWoQuality::parse_quality(&music.n_minfo));
-                    qualities = process_qualities(qualities);
-                    qualities
-                }
-            );
+            // 并行运行 get_pic_url, 和 parse_quality
+            let (pic_result, quality_result) = join!(get_pic_url(&music.music_rid), async {
+                let mut qualities: Vec<KuWoQuality> = KuWoQuality::parse_quality(&music.minfo);
+                qualities.append(&mut KuWoQuality::parse_quality(&music.n_minfo));
+                qualities = process_qualities(qualities);
+                qualities
+            });
 
             // 检查每个任务的结果
             let pic_url = pic_result.unwrap_or(String::with_capacity(0));
