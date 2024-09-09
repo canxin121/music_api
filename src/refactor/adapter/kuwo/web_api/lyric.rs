@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+use crate::refactor::adapter::CLIENT;
+
 #[derive(Deserialize, Debug)]
 pub struct GerLrcResult {
     pub data: GetLrcData,
@@ -24,10 +26,10 @@ pub fn format_seconds_to_timestamp(seconds: f64) -> String {
 }
 
 pub async fn get_kuwo_lyric(song_id: &str) -> Result<String, anyhow::Error> {
-    let result = reqwest::get(format!(
+    let result = CLIENT.get(format!(
         "https://m.kuwo.cn/newh5/singles/songinfoandlrc?musicId={}",
         song_id.replace("MUSIC_", "")
-    ))
+    )).send()
     .await?
     .json::<GerLrcResult>()
     .await?;

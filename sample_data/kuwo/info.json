@@ -1,0 +1,47 @@
+{
+    "status": "200",
+    "msg": [
+        {
+            "disname": "\u6253\u4e0a\u82b1\u706b",
+            "creator": {
+                "uid": "74016",
+                "img": "http://img1.kwcdn.kuwo.cn/star/albumcover/300/72/96/2566658895.jpg",
+                "name": "\u7c73\u6d25\u7384\u5e08&daoko"
+            },
+            "canFullScreen": 1,
+            "like_count": 0,
+            "overseas_pay": "0",
+            "duration": 289,
+            "id": 28510075,
+            "listencnt": 0,
+            "album": "\u6253\u4e0a\u82b1\u706b (\u901a\u5e38\u76e4)",
+            "img": "http://img2.kuwo.cn/wmvpic/324/7/17/3826110829.jpg",
+            "title": "\u6253\u4e0a\u82b1\u706b",
+            "comment_count": 0,
+            "dislike_count": 0,
+            "source": "7",
+            "fav_status": 0,
+            "videosrc": 0,
+            "fav_count": 0,
+            "dislike_status": 0,
+            "mvquality": "MP4|MP4BD|MP4HV|MP4L|MP4UL|MV500|MV700",
+            "overseas_copyright": "1",
+            "traceid": "",
+            "mvpayinfo": {
+                "down": "0",
+                "download": "0",
+                "play": "0",
+                "vid": "8248816"
+            },
+            "extend": "",
+            "like_status": 0,
+            "disable": 0,
+            "desc": "",
+            "name": "\u6253\u4e0a\u82b1\u706b",
+            "statistics_id": "",
+            "artist": "\u7c73\u6d25\u7384\u5e08&daoko",
+            "hot": "1"
+        }
+    ],
+    "video_show": 1
+}
