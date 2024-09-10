@@ -14,6 +14,7 @@ impl MigratorTrait for Migrator {
             Box::new(create_playlist_table::Migration),
             Box::new(create_music_table::Migration),
             Box::new(create_playlist_music_junction_table::Migration),
+            Box::new(crate::refactor::server::kuwo::migration::Migration),
         ]
     }
 }

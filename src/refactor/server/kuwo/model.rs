@@ -5,7 +5,7 @@ use sea_orm::entity::prelude::*;
 use super::web_api::get_kuwo_lyric;
 
 #[derive(Default, Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-#[sea_orm(table_name = "KuwoMusic")]
+#[sea_orm(table_name = "kuwo_music")]
 pub struct Model {
     pub name: String,
     #[sea_orm(primary_key)]
