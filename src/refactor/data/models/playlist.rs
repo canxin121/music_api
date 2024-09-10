@@ -1,5 +1,7 @@
 use sea_orm::{entity::prelude::*, Set};
 
+use crate::refactor::data::common::playlist_subscription::PlayListSubscriptionVec;
+
 #[derive(Default, Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "playlist")]
 pub struct Model {
@@ -10,6 +12,7 @@ pub struct Model {
     pub summary: Option<String>,
     #[sea_orm(nullable)]
     pub cover: Option<String>,
+    pub subscriptions: Option<PlayListSubscriptionVec>,
 }
 
 impl ActiveModel {
@@ -19,6 +22,7 @@ impl ActiveModel {
             name: Set(name),
             summary: Set(summary),
             cover: Set(cover),
+            subscriptions: Default::default(),
         }
     }
 }

@@ -2,8 +2,11 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 use crate::refactor::{
-    data::common::playlist::{MusicListType, PlayList},
-    server::CLIENT,
+    data::common::{
+        music::Music,
+        playlist::{Playlist, PlaylistType},
+    },
+    server::{KuwoMusicModel, CLIENT},
 };
 
 use super::utils::{build_music_rid_pic, build_web_albumpic_short, build_web_artistpic_short};
@@ -13,8 +16,11 @@ pub async fn get_kuwo_music_album(
     album_name: &str,
     page: u32,
     limit: u32,
-) -> Result<PlayList> {
-    assert!(page >= 1, "Page must be greater than 0");
+) -> Result<(Option<Playlist>, Vec<KuwoMusicModel>)> {
+    if page == 0 {
+        return Err(anyhow::anyhow!("Page must be more than or equal 1."));
+    }
+
     let url = format!("http://search.kuwo.cn/r.s?pn={}&rn={}&stype=albuminfo&albumid={}&show_copyright_off=0&encoding=utf&vipver=MUSIC_9.1.0",page-1,limit,album_id);
 
     let text = CLIENT
@@ -26,11 +32,22 @@ pub async fn get_kuwo_music_album(
         .replace("'", "\"");
     // std::fs::write("sample_data/kuwo/album.json", &text).unwrap();
     let mut result: Album = serde_json::from_str(&text)?;
-    for music in result.musiclist.iter_mut() {
+    let mut musics = Vec::new();
+    std::mem::swap(&mut musics, &mut result.musiclist);
+
+    for music in musics.iter_mut() {
         music.album = album_name.to_string();
         music.album_id = album_id.to_string();
     }
-    Ok(result.into())
+
+    let musics = musics
+        .into_iter()
+        .map(|m| {
+            let model: crate::refactor::server::kuwo::model::Model = m.into();
+            model
+        })
+        .collect();
+    Ok((Some(result.into()), musics))
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -54,16 +71,16 @@ pub struct Album {
     // #[serde(rename = "hts_img")]
     // pub hts_img: String,
     pub id: String,
-    // pub img: String,
+    pub img: String,
     pub info: String,
     // pub lang: String,
     pub musiclist: Vec<AlbumMusic>,
     pub name: String,
     // pub pay: String,
-    pub pic: String,
+    // pub pic: String,
     // #[serde(rename = "pub")]
     // pub pub_field: String,
-    // pub songnum: String,
+    pub songnum: String,
     // #[serde(rename = "sort_policy")]
     // pub sort_policy: String,
     // pub sp_privilege: String,
@@ -72,17 +89,23 @@ pub struct Album {
     // pub vip: String,
 }
 
-impl Into<PlayList> for Album {
-    fn into(self) -> PlayList {
-        PlayList {
+impl Into<Playlist> for Album {
+    fn into(self) -> Playlist {
+        Playlist {
             server: crate::refactor::data::common::MusicServer::Kuwo,
-            type_field: MusicListType::Album,
+            type_field: PlaylistType::Album,
             identity: self.id,
             name: self.name,
             summary: Some(self.info),
-            cover: Some(self.pic),
+            cover: Some(self.img),
             creator: Some(self.artist),
             creator_id: Some(self.artistid),
+            play_time: None,
+            music_num: if let Ok(n) = self.songnum.parse() {
+                Some(n)
+            } else {
+                None
+            },
         }
     }
 }
@@ -181,7 +204,7 @@ impl Into<crate::refactor::server::kuwo::model::Model> for AlbumMusic {
             music_pic: music_pic,
             artist_pic: build_web_artistpic_short(&self.web_artistpic_short),
             album_pic: build_web_albumpic_short(&self.web_albumpic_short),
-            mv_vid: None,
+            // mv_vid: None,
         }
     }
 }

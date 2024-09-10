@@ -17,3 +17,9 @@ pub static CLIENT: LazyLock<ClientWithMiddleware> = LazyLock::new(|| {
     ))
     .build()
 });
+
+pub use kuwo::model::Model as KuwoMusicModel;
+
+pub enum Music {
+    Kuwo(KuwoMusicModel),
+}

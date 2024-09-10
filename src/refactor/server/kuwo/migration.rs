@@ -26,7 +26,7 @@ impl MigrationTrait for Migration {
                     .col(string(Column::MusicPic))
                     .col(string_null(Column::ArtistPic))
                     .col(string_null(Column::AlbumPic))
-                    .col(string_null(Column::MvVid))
+                    // .col(string_null(Column::MvVid))
                     .if_not_exists()
                     .to_owned(),
             )

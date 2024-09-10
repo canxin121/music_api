@@ -180,11 +180,11 @@ impl Into<crate::refactor::server::kuwo::model::Model> for SearchMusic {
             music_pic: musicrid_pic,
             artist_pic: build_web_artistpic_short(&self.web_artistpic_short),
             album_pic: build_web_albumpic_short(&self.web_albumpic_short),
-            mv_vid: if self.mvpayinfo.vid.is_empty() {
-                None
-            } else {
-                Some(self.mvpayinfo.vid)
-            },
+            // mv_vid: if self.mvpayinfo.vid.is_empty() {
+            //     None
+            // } else {
+            //     Some(self.mvpayinfo.vid)
+            // },
         }
     }
 }

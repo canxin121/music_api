@@ -2,9 +2,12 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use urlencoding::encode;
 
-use crate::refactor::server::{
-    kuwo::web_api::music::{Audiobookpayinfo, Mvpayinfo, PayInfo},
-    CLIENT,
+use crate::refactor::{
+    data::common::playlist::Playlist,
+    server::{
+        kuwo::web_api::music::{Audiobookpayinfo, Mvpayinfo, PayInfo},
+        CLIENT,
+    },
 };
 
 use super::utils::{build_music_rid_pic, parse_qualities_minfo};
@@ -17,11 +20,7 @@ pub fn gen_get_musics_url(playlist_id: &str, page: u32, limit: u32) -> String {
     format!("http://nplserver.kuwo.cn/pl.svc?op=getlistinfo&pid={playlist_id}&pn={}&rn={limit}&encode=utf8&keyset=pl2012&identity=kuwo&pcmp4=1&vipver=MUSIC_9.0.5.0_W1&newver=1",page-1)
 }
 
-pub async fn search_kuwo_music_list(
-    content: &str,
-    page: u32,
-    limit: u32,
-) -> Result<SearchMusiclistResult> {
+pub async fn search_kuwo_music_list(content: &str, page: u32, limit: u32) -> Result<Vec<Playlist>> {
     let url = gen_music_list_url(content, page, limit);
     let text = CLIENT
         .get(&url)
@@ -33,7 +32,8 @@ pub async fn search_kuwo_music_list(
         .replace("'", "\"");
     // std::fs::write("sample_data/kuwo/search_music_list.json", &text).unwrap();
     let result: SearchMusiclistResult = serde_json::from_str(&text)?;
-    Ok(result)
+    let playlists = result.abslist.into_iter().map(|p| p.into()).collect();
+    Ok(playlists)
 }
 
 pub async fn get_kuwo_musics_of_music_list(
@@ -52,53 +52,78 @@ pub async fn get_kuwo_musics_of_music_list(
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchMusiclistResult {
-    #[serde(rename = "ARTISTPIC")]
-    pub artistpic: String,
-    #[serde(rename = "HIT")]
-    pub hit: String,
-    #[serde(rename = "HITMODE")]
-    pub hitmode: String,
-    #[serde(rename = "HIT_BUT_OFFLINE")]
-    pub hit_but_offline: String,
-    #[serde(rename = "MSHOW")]
-    pub mshow: String,
-    #[serde(rename = "NEW")]
-    pub new: String,
-    #[serde(rename = "PN")]
-    pub pn: String,
-    #[serde(rename = "RN")]
-    pub rn: String,
-    #[serde(rename = "SHOW")]
-    pub show: String,
-    #[serde(rename = "TOTAL")]
-    pub total: String,
-    #[serde(rename = "UK")]
-    pub uk: String,
+    // #[serde(rename = "ARTISTPIC")]
+    // pub artistpic: String,
+    // #[serde(rename = "HIT")]
+    // pub hit: String,
+    // #[serde(rename = "HITMODE")]
+    // pub hitmode: String,
+    // #[serde(rename = "HIT_BUT_OFFLINE")]
+    // pub hit_but_offline: String,
+    // #[serde(rename = "MSHOW")]
+    // pub mshow: String,
+    // #[serde(rename = "NEW")]
+    // pub new: String,
+    // #[serde(rename = "PN")]
+    // pub pn: String,
+    // #[serde(rename = "RN")]
+    // pub rn: String,
+    // #[serde(rename = "SHOW")]
+    // pub show: String,
+    // #[serde(rename = "TOTAL")]
+    // pub total: String,
+    // #[serde(rename = "UK")]
+    // pub uk: String,
     pub abslist: Vec<SearchMusicList>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchMusicList {
-    #[serde(rename = "DC_TARGETID")]
-    pub dc_targetid: String,
-    #[serde(rename = "DC_TARGETTYPE")]
-    pub dc_targettype: String,
-    pub hasdeal: String,
-    pub hitcontent: String,
-    #[serde(rename = "hts_pic")]
-    pub hts_pic: String,
+    // #[serde(rename = "DC_TARGETID")]
+    // pub dc_targetid: String,
+    // #[serde(rename = "DC_TARGETTYPE")]
+    // pub dc_targettype: String,
+    // pub hasdeal: String,
+    // pub hitcontent: String,
+    // #[serde(rename = "hts_pic")]
+    // pub hts_pic: String,
     pub intro: String,
-    pub isshow: String,
+    // pub isshow: String,
     pub name: String,
     pub nickname: String,
     pub pic: String,
     pub playcnt: String,
     pub playlistid: String,
-    #[serde(rename = "react_type")]
-    pub react_type: String,
+    // #[serde(rename = "react_type")]
+    // pub react_type: String,
     pub songnum: String,
-    pub tags: String,
+    // pub tags: String,
+}
+
+impl Into<Playlist> for SearchMusicList {
+    fn into(self) -> Playlist {
+        Playlist {
+            server: crate::refactor::data::common::MusicServer::Kuwo,
+            type_field: crate::refactor::data::common::playlist::PlaylistType::UserPlaylist,
+            identity: self.playlistid,
+            name: self.name,
+            summary: Some(self.intro),
+            cover: Some(self.pic),
+            creator: Some(self.nickname),
+            creator_id: None,
+            play_time: if let Ok(n) = self.playcnt.parse() {
+                Some(n)
+            } else {
+                None
+            },
+            music_num: if let Ok(n) = self.songnum.parse() {
+                Some(n)
+            } else {
+                None
+            },
+        }
+    }
 }
 
 /// GetMusicListResult
@@ -223,11 +248,11 @@ impl Into<crate::refactor::server::kuwo::model::Model> for MusiclistMusic {
             music_pic,
             artist_pic: None,
             album_pic: None,
-            mv_vid: if self.mvpayinfo.vid.is_empty() {
-                None
-            } else {
-                Some(self.mvpayinfo.vid)
-            },
+            // mv_vid: if self.mvpayinfo.vid.is_empty() {
+            //     None
+            // } else {
+            //     Some(self.mvpayinfo.vid)
+            // },
         }
     }
 }

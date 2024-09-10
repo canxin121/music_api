@@ -1,4 +1,7 @@
-use crate::refactor::data::{common::quality::QualityVec, models::music_aggregator};
+use crate::refactor::data::{
+    common::{music::Music, quality::QualityVec},
+    models::music_aggregator,
+};
 use anyhow::Result;
 use sea_orm::entity::prelude::*;
 
@@ -18,7 +21,43 @@ pub struct Model {
     pub music_pic: String,
     pub artist_pic: Option<String>,
     pub album_pic: Option<String>,
-    pub mv_vid: Option<String>,
+    // pub mv_vid: Option<String>,
+}
+
+impl Into<Music> for Model {
+    fn into(self) -> Music {
+        Music {
+            server: crate::refactor::data::common::MusicServer::Kuwo,
+            indentity: self.music_id,
+            name: self.name,
+            artist: self.artist,
+            artist_id: self.artist_id,
+            album: self.album,
+            album_id: self.album_id,
+            qualities: self.qualities,
+            music_pic: self.music_pic,
+            artist_pic: self.artist_pic,
+            album_pic: self.album_pic,
+        }
+    }
+}
+
+impl From<Music> for Model {
+    fn from(value: Music) -> Self {
+        Model {
+            name: value.name,
+            music_id: value.indentity,
+            artist: value.artist,
+            artist_id: value.artist_id,
+            album: value.album,
+            album_id: value.album_id,
+            qualities: value.qualities,
+            music_pic: value.music_pic,
+            artist_pic: value.artist_pic,
+            album_pic: value.album_pic,
+            // mv_vid: None,
+        }
+    }
 }
 
 impl Model {

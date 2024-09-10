@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+pub mod music;
 pub mod playlist;
 pub mod playlist_subscription;
 pub mod quality;
@@ -8,4 +9,5 @@ pub mod quality;
 pub enum MusicServer {
     Kuwo,
     Netease,
+    Database,
 }

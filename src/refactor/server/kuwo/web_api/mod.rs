@@ -13,9 +13,12 @@ pub use music_list::{get_kuwo_musics_of_music_list, search_kuwo_music_list};
 
 #[cfg(test)]
 mod kuwo_web_api_test {
-    use crate::refactor::server::kuwo::web_api::{
-        album::get_kuwo_music_album, info::get_kuwo_music_info, lyric::get_kuwo_lyric,
-        music_list::get_kuwo_musics_of_music_list,
+    use crate::refactor::{
+        data::common::playlist::Playlist,
+        server::kuwo::web_api::{
+            album::get_kuwo_music_album, info::get_kuwo_music_info, lyric::get_kuwo_lyric,
+            music_list::get_kuwo_musics_of_music_list,
+        },
     };
 
     use super::{
@@ -27,7 +30,7 @@ mod kuwo_web_api_test {
         search_kuwo_musics("米津玄师", 1, 30).await.unwrap()
     }
 
-    async fn do_search_music_list() -> SearchMusiclistResult {
+    async fn do_search_music_list() -> Vec<Playlist> {
         search_kuwo_music_list("米津玄师", 1, 30).await.unwrap()
     }
 
@@ -43,7 +46,7 @@ mod kuwo_web_api_test {
     #[tokio::test]
     async fn test_search_music_list() {
         let result = do_search_music_list().await;
-        let musiclists = result.abslist;
+        let musiclists = result;
         println!("length:{}", musiclists.len());
         for musiclist in musiclists {
             println!("{:?}", musiclist);
@@ -52,10 +55,10 @@ mod kuwo_web_api_test {
 
     #[tokio::test]
     async fn test_get_musics_of_music_list() {
-        let musiclist = do_search_music_list().await.abslist;
+        let musiclist = do_search_music_list().await;
 
         let musicllist1 = musiclist.first().unwrap();
-        let result = get_kuwo_musics_of_music_list(&musicllist1.playlistid, 1, 30).await;
+        let result = get_kuwo_musics_of_music_list(&musicllist1.identity, 1, 30).await;
         println!("{:?}", result);
     }
 
