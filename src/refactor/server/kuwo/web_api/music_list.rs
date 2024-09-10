@@ -2,10 +2,12 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use urlencoding::encode;
 
-use crate::refactor::adapter::{
+use crate::refactor::server::{
     kuwo::web_api::music::{Audiobookpayinfo, Mvpayinfo, PayInfo},
     CLIENT,
 };
+
+use super::utils::{build_music_rid_pic, parse_qualities_minfo};
 
 pub fn gen_music_list_url(content: &str, page: u32, limit: u32) -> String {
     format!("http://search.kuwo.cn/r.s?all={}&pn={}&rn={limit}&rformat=json&encoding=utf8&ver=mbox&vipver=MUSIC_8.7.7.0_BCS37&plat=pc&devid=28156413&ft=playlist&pay=0&needliveshow=0",encode(content),page-1)
@@ -72,12 +74,12 @@ pub struct SearchMusiclistResult {
     pub total: String,
     #[serde(rename = "UK")]
     pub uk: String,
-    pub abslist: Vec<Abslist>,
+    pub abslist: Vec<SearchMusicList>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Abslist {
+pub struct SearchMusicList {
     #[serde(rename = "DC_TARGETID")]
     pub dc_targetid: String,
     #[serde(rename = "DC_TARGETTYPE")]
@@ -108,7 +110,7 @@ pub struct GetMusicListResult {
     pub id: i64,
     pub info: String,
     pub ispub: bool,
-    pub musiclist: Vec<Musiclist>,
+    pub musiclist: Vec<MusiclistMusic>,
     pub pic: String,
     pub playnum: i64,
     pub pn: i64,
@@ -130,7 +132,9 @@ pub struct GetMusicListResult {
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Musiclist {
+pub struct MusiclistMusic {
+    #[serde(default)]
+    pub musiclist_pic: String,
     #[serde(rename = "AARTIST")]
     pub aartist: String,
     #[serde(rename = "FALBUM")]
@@ -203,4 +207,27 @@ pub struct Musiclist {
     #[serde(rename = "tme_musician_adtype")]
     pub tme_musician_adtype: String,
     pub tpay: String,
+}
+
+impl Into<crate::refactor::server::kuwo::model::Model> for MusiclistMusic {
+    fn into(self) -> crate::refactor::server::kuwo::model::Model {
+        let music_pic = build_music_rid_pic(&self.id);
+        crate::refactor::server::kuwo::model::Model {
+            name: self.name,
+            music_id: self.id,
+            artist: self.artist,
+            artist_id: self.artistid,
+            album: Some(self.album),
+            album_id: Some(self.albumid),
+            qualities: parse_qualities_minfo(&self.minfo).into(),
+            music_pic,
+            artist_pic: None,
+            album_pic: None,
+            mv_vid: if self.mvpayinfo.vid.is_empty() {
+                None
+            } else {
+                Some(self.mvpayinfo.vid)
+            },
+        }
+    }
 }

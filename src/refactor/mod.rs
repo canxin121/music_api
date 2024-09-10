@@ -1,2 +1,2 @@
-pub mod adapter;
+pub mod server;
 pub mod data;

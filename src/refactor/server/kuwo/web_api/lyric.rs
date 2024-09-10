@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::refactor::adapter::CLIENT;
+use crate::refactor::server::CLIENT;
 
 #[derive(Deserialize, Debug)]
 pub struct GerLrcResult {

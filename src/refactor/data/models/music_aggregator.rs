@@ -12,7 +12,7 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
     PlaylistMusicJunction,
-    // KuwoMusic,
+    KuwoMusic,
     // NeteaseMusicId,
 }
 
@@ -26,12 +26,13 @@ impl RelationTrait for Relation {
                     .on_delete(sea_query::ForeignKeyAction::Cascade)
                     .on_update(sea_query::ForeignKeyAction::Cascade)
                     .into()
-            } // Relation::KuwoMusic => Entity::has_one(crate::refactor::adapter::kuwo::model::Entity)
-              //     .from(Column::KuwoMusicId)
-              //     .to(crate::refactor::adapter::kuwo::model::Column::Musicrid)
-              //     .on_delete(sea_query::ForeignKeyAction::Cascade)
-              //     .on_update(sea_query::ForeignKeyAction::Cascade)
-              //     .into(),
+            }
+            Relation::KuwoMusic => Entity::has_one(crate::refactor::server::kuwo::model::Entity)
+                .from(Column::KuwoMusicId)
+                .to(crate::refactor::server::kuwo::model::Column::MusicId)
+                .on_delete(sea_query::ForeignKeyAction::Cascade)
+                .on_update(sea_query::ForeignKeyAction::Cascade)
+                .into(),
         }
     }
 }
@@ -56,10 +57,10 @@ impl Related<super::playlist_music_junction::Entity> for Entity {
     }
 }
 
-// impl Related<crate::refactor::adapter::kuwo::model::Entity> for Entity {
-//     fn to() -> RelationDef {
-//         crate::refactor::adapter::kuwo::model::Relation::MusicAggregator.def()
-//     }
-// }
+impl Related<crate::refactor::server::kuwo::model::Entity> for Entity {
+    fn to() -> RelationDef {
+        crate::refactor::server::kuwo::model::Relation::MusicAggregator.def()
+    }
+}
 
 impl ActiveModelBehavior for ActiveModel {}

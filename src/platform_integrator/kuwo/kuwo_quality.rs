@@ -44,6 +44,7 @@ pub(crate) fn process_qualities(qualities: Vec<KuWoQuality>) -> Vec<KuWoQuality>
 
     unique_qualities
 }
+
 pub fn gen_minfo_from_formats(raw: &str) -> String {
     let mut format = String::new();
     if raw.contains("HIRFLAC") {

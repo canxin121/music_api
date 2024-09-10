@@ -1,6 +1,10 @@
-use crate::refactor::adapter::CLIENT;
+use crate::refactor::server::CLIENT;
 
 use serde::{Deserialize, Serialize};
+
+use super::utils::{
+    build_music_rid_pic, build_web_albumpic_short, build_web_artistpic_short, parse_qualities_minfo,
+};
 
 pub async fn search_kuwo_musics(
     content: &str,
@@ -19,10 +23,7 @@ pub async fn search_kuwo_musics(
 async fn test_search_single_music() {
     let musics = search_kuwo_musics("张惠妹", 1, 30).await.unwrap().abslist;
 
-    musics.iter().for_each(|m| {
-        println!("{:?}", m.album_pic());
-        println!("{:?}", m.artist_pic());
-    });
+    musics.iter().for_each(|m| println!("{:?}", m));
     println!("length:{}", musics.len())
 }
 
@@ -52,13 +53,13 @@ pub struct KuwoMusics {
     pub total: String,
     #[serde(rename = "UK")]
     pub uk: String,
-    pub abslist: Vec<KuwoMusic>,
+    pub abslist: Vec<SearchMusic>,
     pub searchgroup: String,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct KuwoMusic {
+pub struct SearchMusic {
     #[serde(rename = "AARTIST")]
     pub aartist: String,
     #[serde(rename = "ALBUM")]
@@ -165,25 +166,25 @@ pub struct KuwoMusic {
     pub web_timingonline: String,
 }
 
-impl KuwoMusic {
-    pub fn artist_pic(&self) -> Option<String> {
-        if self.web_artistpic_short.is_empty() {
-            None
-        } else {
-            Some(format!(
-                "https://img1.kuwo.cn/star/starheads/{}",
-                self.web_artistpic_short
-            ))
-        }
-    }
-    pub fn album_pic(&self) -> Option<String> {
-        if self.web_albumpic_short.is_empty() {
-            None
-        } else {
-            Some(format!(
-                "https://img2.kuwo.cn/star/albumcover/{}",
-                self.web_albumpic_short
-            ))
+impl Into<crate::refactor::server::kuwo::model::Model> for SearchMusic {
+    fn into(self) -> crate::refactor::server::kuwo::model::Model {
+        let musicrid_pic = build_music_rid_pic(&self.musicrid);
+        crate::refactor::server::kuwo::model::Model {
+            name: self.name,
+            music_id: self.musicrid,
+            artist: self.artist,
+            artist_id: self.artistid,
+            album: Some(self.album),
+            album_id: Some(self.albumid),
+            qualities: parse_qualities_minfo(&self.minfo).into(),
+            music_pic: musicrid_pic,
+            artist_pic: build_web_artistpic_short(&self.web_artistpic_short),
+            album_pic: build_web_albumpic_short(&self.web_albumpic_short),
+            mv_vid: if self.mvpayinfo.vid.is_empty() {
+                None
+            } else {
+                Some(self.mvpayinfo.vid)
+            },
         }
     }
 }
