@@ -1,12 +1,11 @@
 use anyhow::Result;
-use futures::future::join_all;
 use serde::{Deserialize, Serialize};
-use std::mem;
 use urlencoding::encode;
 
-use crate::refactor::adapter::{kuwo::model::{Audiobookpayinfo, Mvpayinfo, PayInfo}, CLIENT};
-
-use super::utils::decode_html_entities;
+use crate::refactor::adapter::{
+    kuwo::web_api::music::{Audiobookpayinfo, Mvpayinfo, PayInfo},
+    CLIENT,
+};
 
 pub fn gen_music_list_url(content: &str, page: u32, limit: u32) -> String {
     format!("http://search.kuwo.cn/r.s?all={}&pn={}&rn={limit}&rformat=json&encoding=utf8&ver=mbox&vipver=MUSIC_8.7.7.0_BCS37&plat=pc&devid=28156413&ft=playlist&pay=0&needliveshow=0",encode(content),page-1)
@@ -35,13 +34,16 @@ pub async fn search_kuwo_music_list(
     Ok(result)
 }
 
-pub async fn get_kuwo_musics_of_music_list(playlist_id: &str, page: u32, limit: u32) -> Result<()> {
+pub async fn get_kuwo_musics_of_music_list(
+    playlist_id: &str,
+    page: u32,
+    limit: u32,
+) -> Result<GetMusicListResult> {
     let url = gen_get_musics_url(playlist_id, page, limit);
 
-    let musiclist = CLIENT.get(url).send().await?.text().await?;
-    std::fs::write("sample_data/kuwo/get_musics_of_music_list.json", &musiclist).unwrap();
-    // musiclist.musiclist_id = playlist_id.to_string();
-    Ok(())
+    let musiclist: GetMusicListResult = CLIENT.get(url).send().await?.json().await?;
+
+    Ok(musiclist)
 }
 
 /// SearchMusiclistResult
