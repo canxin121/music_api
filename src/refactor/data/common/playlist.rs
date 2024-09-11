@@ -19,6 +19,6 @@ pub struct Playlist {
     pub cover: Option<String>,
     pub creator: Option<String>,
     pub creator_id: Option<String>,
-    pub play_time: Option<u128>,
-    pub music_num: Option<u128>,
+    pub play_time: Option<u64>,
+    pub music_num: Option<u64>,
 }

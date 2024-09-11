@@ -15,18 +15,18 @@ pub use music_list::{get_kuwo_musics_of_music_list, search_kuwo_music_list};
 mod kuwo_web_api_test {
     use crate::refactor::{
         data::common::playlist::Playlist,
-        server::kuwo::web_api::{
-            album::get_kuwo_music_album, info::get_kuwo_music_info, lyric::get_kuwo_lyric,
-            music_list::get_kuwo_musics_of_music_list,
+        server::{
+            kuwo::web_api::{
+                album::get_kuwo_music_album, info::get_kuwo_music_info, lyric::get_kuwo_lyric,
+                music_list::get_kuwo_musics_of_music_list,
+            },
+            KuwoMusicModel,
         },
     };
 
-    use super::{
-        music::{search_kuwo_musics, KuwoMusics},
-        music_list::{search_kuwo_music_list, SearchMusiclistResult},
-    };
+    use super::{music::search_kuwo_musics, music_list::search_kuwo_music_list};
 
-    async fn do_search_music() -> KuwoMusics {
+    async fn do_search_music() -> Vec<KuwoMusicModel> {
         search_kuwo_musics("米津玄师", 1, 30).await.unwrap()
     }
 
@@ -36,7 +36,7 @@ mod kuwo_web_api_test {
 
     #[tokio::test]
     async fn test_search_music() {
-        let musics = do_search_music().await.abslist;
+        let musics = do_search_music().await;
         println!("length:{}", musics.len());
         for music in musics {
             println!("{:?}", music);
@@ -64,10 +64,10 @@ mod kuwo_web_api_test {
 
     #[tokio::test]
     async fn test_get_album() {
-        let musics = do_search_music().await.abslist;
-        let music1 = &musics[2];
-        let album_name = music1.album.as_str();
-        let album_id = music1.albumid.as_str();
+        let musics = do_search_music().await;
+        let music1 = &musics.iter().find(|m| m.album.is_some()).unwrap();
+        let album_name = music1.album.as_ref().unwrap();
+        let album_id = music1.album_id.as_ref().unwrap();
         let result = get_kuwo_music_album(album_id, album_name, 1, 30)
             .await
             .unwrap();
@@ -76,8 +76,8 @@ mod kuwo_web_api_test {
 
     #[tokio::test]
     async fn test_lyric() {
-        let music = do_search_music().await.abslist;
-        let lyric = get_kuwo_lyric(&music.first().unwrap().musicrid)
+        let music = do_search_music().await;
+        let lyric = get_kuwo_lyric(&music.first().unwrap().music_id)
             .await
             .unwrap();
         println!("{}", lyric);
@@ -85,8 +85,8 @@ mod kuwo_web_api_test {
 
     #[tokio::test]
     async fn test_info() {
-        let music = do_search_music().await.abslist;
-        let info = get_kuwo_music_info(&music.first().unwrap().musicrid)
+        let music = do_search_music().await;
+        let info = get_kuwo_music_info(&music.first().unwrap().music_id)
             .await
             .unwrap();
         println!("{:?}", info);

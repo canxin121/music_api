@@ -4,10 +4,7 @@ use urlencoding::encode;
 
 use crate::refactor::{
     data::common::playlist::Playlist,
-    server::{
-        kuwo::web_api::music::{Audiobookpayinfo, Mvpayinfo, PayInfo},
-        CLIENT,
-    },
+    server::{KuwoMusicModel, CLIENT},
 };
 
 use super::utils::{build_music_rid_pic, parse_qualities_minfo};
@@ -40,11 +37,11 @@ pub async fn get_kuwo_musics_of_music_list(
     playlist_id: &str,
     page: u32,
     limit: u32,
-) -> Result<GetMusicListResult> {
+) -> Result<Vec<KuwoMusicModel>> {
     let url = gen_get_musics_url(playlist_id, page, limit);
 
     let musiclist: GetMusicListResult = CLIENT.get(url).send().await?.json().await?;
-
+    let musiclist = musiclist.musiclist.into_iter().map(|m| m.into()).collect();
     Ok(musiclist)
 }
 
@@ -130,108 +127,108 @@ impl Into<Playlist> for SearchMusicList {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetMusicListResult {
-    pub abstime: i64,
-    pub ctime: i64,
-    pub id: i64,
-    pub info: String,
-    pub ispub: bool,
+    // pub abstime: i64,
+    // pub ctime: i64,
+    // pub id: i64,
+    // pub info: String,
+    // pub ispub: bool,
     pub musiclist: Vec<MusiclistMusic>,
-    pub pic: String,
-    pub playnum: i64,
-    pub pn: i64,
-    pub result: String,
-    pub rn: i64,
-    pub sharenum: i64,
-    pub songtime: i64,
-    pub state: i64,
-    pub tag: String,
-    pub tagid: String,
-    pub title: String,
-    pub total: i64,
-    #[serde(rename = "type")]
-    pub type_field: String,
-    pub uid: i64,
-    pub uname: String,
-    pub validtotal: i64,
+    // pub pic: String,
+    // pub playnum: i64,
+    // pub pn: i64,
+    // pub result: String,
+    // pub rn: i64,
+    // pub sharenum: i64,
+    // pub songtime: i64,
+    // pub state: i64,
+    // pub tag: String,
+    // pub tagid: String,
+    // pub title: String,
+    // pub total: i64,
+    // #[serde(rename = "type")]
+    // pub type_field: String,
+    // pub uid: i64,
+    // pub uname: String,
+    // pub validtotal: i64,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MusiclistMusic {
-    #[serde(default)]
-    pub musiclist_pic: String,
-    #[serde(rename = "AARTIST")]
-    pub aartist: String,
-    #[serde(rename = "FALBUM")]
-    pub falbum: String,
-    #[serde(rename = "FARTIST")]
-    pub fartist: String,
-    #[serde(rename = "FSONGNAME")]
-    pub fsongname: String,
-    #[serde(rename = "MINFO")]
+    // #[serde(default)]
+    // pub musiclist_pic: String,
+    // #[serde(rename = "AARTIST")]
+    // pub aartist: String,
+    // #[serde(rename = "FALBUM")]
+    // pub falbum: String,
+    // #[serde(rename = "FARTIST")]
+    // pub fartist: String,
+    // #[serde(rename = "FSONGNAME")]
+    // pub fsongname: String,
+    // #[serde(rename = "MINFO")]
     pub minfo: String,
-    #[serde(rename = "N_MINFO")]
-    pub n_minfo: String,
-    #[serde(rename = "ad_subtype")]
-    pub ad_subtype: String,
-    #[serde(rename = "ad_type")]
-    pub ad_type: String,
+    // #[serde(rename = "N_MINFO")]
+    // pub n_minfo: String,
+    // #[serde(rename = "ad_subtype")]
+    // pub ad_subtype: String,
+    // #[serde(rename = "ad_type")]
+    // pub ad_type: String,
     pub album: String,
     pub albumid: String,
     pub artist: String,
     pub artistid: String,
-    pub audiobookpayinfo: Audiobookpayinfo,
-    pub barrage: String,
-    #[serde(rename = "cache_status")]
-    pub cache_status: String,
-    #[serde(rename = "collect_num")]
-    pub collect_num: String,
-    #[serde(rename = "content_type")]
-    pub content_type: String,
-    pub copyright: String,
-    pub displayalbumname: String,
-    pub displayartistname: String,
-    pub displaysongname: String,
+    // pub audiobookpayinfo: Audiobookpayinfo,
+    // pub barrage: String,
+    // #[serde(rename = "cache_status")]
+    // pub cache_status: String,
+    // #[serde(rename = "collect_num")]
+    // pub collect_num: String,
+    // #[serde(rename = "content_type")]
+    // pub content_type: String,
+    // pub copyright: String,
+    // pub displayalbumname: String,
+    // pub displayartistname: String,
+    // pub displaysongname: String,
     pub duration: String,
-    pub firstrecordtime: String,
-    pub formats: String,
-    pub hasmv: String,
+    // pub firstrecordtime: String,
+    // pub formats: String,
+    // pub hasmv: String,
     pub id: String,
-    #[serde(rename = "is_point")]
-    pub is_point: String,
-    pub isbatch: String,
-    pub isdownload: String,
-    pub isshow: String,
-    pub isshowtype: String,
-    pub isstar: String,
-    pub mp3sig1: String,
-    pub mp3sig2: String,
-    pub mp4sig1: Option<String>,
-    pub mp4sig2: Option<String>,
-    pub musicattachinfoid: String,
-    #[serde(rename = "muti_ver")]
-    pub muti_ver: String,
-    pub mvpayinfo: Mvpayinfo,
+    // #[serde(rename = "is_point")]
+    // pub is_point: String,
+    // pub isbatch: String,
+    // pub isdownload: String,
+    // pub isshow: String,
+    // pub isshowtype: String,
+    // pub isstar: String,
+    // pub mp3sig1: String,
+    // pub mp3sig2: String,
+    // pub mp4sig1: Option<String>,
+    // pub mp4sig2: Option<String>,
+    // pub musicattachinfoid: String,
+    // #[serde(rename = "muti_ver")]
+    // pub muti_ver: String,
+    // pub mvpayinfo: Mvpayinfo,
     pub name: String,
-    pub nationid: String,
-    pub nsig1: String,
-    pub nsig2: String,
-    pub online: String,
-    pub opay: String,
-    #[serde(rename = "overseas_copyright")]
-    pub overseas_copyright: String,
-    #[serde(rename = "overseas_pay")]
-    pub overseas_pay: String,
-    pub params: String,
-    pub pay: String,
-    pub pay_info: PayInfo,
-    pub score100: String,
-    pub sp_privilege: String,
-    pub subs_strategy: String,
-    pub subs_text: String,
-    #[serde(rename = "tme_musician_adtype")]
-    pub tme_musician_adtype: String,
-    pub tpay: String,
+    // pub nationid: String,
+    // pub nsig1: String,
+    // pub nsig2: String,
+    // pub online: String,
+    // pub opay: String,
+    // #[serde(rename = "overseas_copyright")]
+    // pub overseas_copyright: String,
+    // #[serde(rename = "overseas_pay")]
+    // pub overseas_pay: String,
+    // pub params: String,
+    // pub pay: String,
+    // pub pay_info: PayInfo,
+    // pub score100: String,
+    // pub sp_privilege: String,
+    // pub subs_strategy: String,
+    // pub subs_text: String,
+    // #[serde(rename = "tme_musician_adtype")]
+    // pub tme_musician_adtype: String,
+    // pub tpay: String,
 }
 
 impl Into<crate::refactor::server::kuwo::model::Model> for MusiclistMusic {
@@ -248,6 +245,7 @@ impl Into<crate::refactor::server::kuwo::model::Model> for MusiclistMusic {
             music_pic,
             artist_pic: None,
             album_pic: None,
+            duration: self.duration.parse().ok(),
             // mv_vid: if self.mvpayinfo.vid.is_empty() {
             //     None
             // } else {

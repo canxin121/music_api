@@ -2,10 +2,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 use crate::refactor::{
-    data::common::{
-        music::Music,
-        playlist::{Playlist, PlaylistType},
-    },
+    data::common::playlist::{Playlist, PlaylistType},
     server::{KuwoMusicModel, CLIENT},
 };
 
@@ -204,7 +201,7 @@ impl Into<crate::refactor::server::kuwo::model::Model> for AlbumMusic {
             music_pic: music_pic,
             artist_pic: build_web_artistpic_short(&self.web_artistpic_short),
             album_pic: build_web_albumpic_short(&self.web_albumpic_short),
-            // mv_vid: None,
+            duration: None,
         }
     }
 }

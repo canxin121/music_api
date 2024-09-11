@@ -1,6 +1,8 @@
+use sea_orm::Set;
 use serde::{Deserialize, Serialize};
+use anyhow::Result;
 
-use crate::refactor::server::CLIENT;
+use crate::refactor::server::{KuwoMusicActiveModel, CLIENT};
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -73,7 +75,7 @@ pub struct Mvpayinfo {
     pub vid: String,
 }
 
-pub async fn get_kuwo_music_info(music_rid: &str) -> Result<MusicInfoResult, anyhow::Error> {
+pub async fn get_kuwo_music_info(music_rid: &str) -> Result<MusicInfoResult> {
     let url = format!("https://fvedio.kuwo.cn/rec.s?rid={}&cmd=rcm_switch&idfa=&prod=kwplayersimple_ip_1.0.2.0&source=kwplayersimple_ip_1.0.2.0_TJ.ipa&corp=kuwo&plat=ip&tmeapp=1&prod_from=kwplayersimple",music_rid.replace("MUSIC_", ""));
     let info: MusicInfoResult = CLIENT.get(url).send().await?.json().await?;
 
