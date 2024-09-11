@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use urlencoding::encode;
 
 use crate::refactor::{
-    data::common::playlist::Playlist,
+    data::interface::playlist::Playlist,
     server::{KuwoMusicModel, CLIENT},
 };
 
@@ -101,24 +101,17 @@ pub struct SearchMusicList {
 impl Into<Playlist> for SearchMusicList {
     fn into(self) -> Playlist {
         Playlist {
-            server: crate::refactor::data::common::MusicServer::Kuwo,
-            type_field: crate::refactor::data::common::playlist::PlaylistType::UserPlaylist,
+            from_db: false,
+            server: crate::refactor::data::interface::MusicServer::Kuwo,
+            type_field: crate::refactor::data::interface::playlist::PlaylistType::UserPlaylist,
             identity: self.playlistid,
             name: self.name,
             summary: Some(self.intro),
             cover: Some(self.pic),
             creator: Some(self.nickname),
             creator_id: None,
-            play_time: if let Ok(n) = self.playcnt.parse() {
-                Some(n)
-            } else {
-                None
-            },
-            music_num: if let Ok(n) = self.songnum.parse() {
-                Some(n)
-            } else {
-                None
-            },
+            play_time: self.playcnt.parse().ok(),
+            music_num: self.songnum.parse().ok(),
         }
     }
 }

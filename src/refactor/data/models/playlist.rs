@@ -1,6 +1,6 @@
-use sea_orm::{entity::prelude::*, Set};
+use sea_orm::{entity::prelude::*, FromJsonQueryResult, Set};
+use serde::{Deserialize, Serialize};
 
-use crate::refactor::data::common::playlist_subscription::PlayListSubscriptionVec;
 
 #[derive(Default, Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "playlist")]
@@ -15,6 +15,15 @@ pub struct Model {
     pub subscriptions: Option<PlayListSubscriptionVec>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult)]
+pub struct PlayListSubscription {
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub identity: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult)]
+pub struct PlayListSubscriptionVec(pub Vec<PlayListSubscription>);
 impl ActiveModel {
     pub fn new(name: String, summary: Option<String>, cover: Option<String>) -> Self {
         Self {

@@ -2,7 +2,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 use crate::refactor::{
-    data::common::playlist::{Playlist, PlaylistType},
+    data::interface::playlist::{Playlist, PlaylistType},
     server::{KuwoMusicModel, CLIENT},
 };
 
@@ -89,7 +89,8 @@ pub struct Album {
 impl Into<Playlist> for Album {
     fn into(self) -> Playlist {
         Playlist {
-            server: crate::refactor::data::common::MusicServer::Kuwo,
+            from_db: false,
+            server: crate::refactor::data::interface::MusicServer::Kuwo,
             type_field: PlaylistType::Album,
             identity: self.id,
             name: self.name,

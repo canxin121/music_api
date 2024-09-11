@@ -1,4 +1,4 @@
-use crate::refactor::data::common::quality::Quality;
+use crate::refactor::data::interface::quality::Quality;
 
 pub fn decode_html_entities(input: String) -> String {
     input

@@ -14,7 +14,7 @@ pub use music_list::{get_kuwo_musics_of_music_list, search_kuwo_music_list};
 #[cfg(test)]
 mod kuwo_web_api_test {
     use crate::refactor::{
-        data::common::playlist::Playlist,
+        data::interface::playlist::Playlist,
         server::{
             kuwo::web_api::{
                 album::get_kuwo_music_album, info::get_kuwo_music_info, lyric::get_kuwo_lyric,

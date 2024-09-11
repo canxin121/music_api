@@ -1,4 +1,4 @@
-use crate::refactor::{data::{common::quality::QualityVec, models::music_aggregator}, server::Music};
+use crate::refactor::data::{interface::{music::Music, quality::QualityVec}, models::music_aggregator};
 use anyhow::Result;
 use sea_orm::entity::prelude::*;
 
@@ -31,7 +31,39 @@ impl Model {
 
 impl Into<Music> for Model {
     fn into(self) -> Music {
-        Music::Kuwo(self)
+        Music{
+            from_db: false,
+            server: crate::refactor::data::interface::MusicServer::Kuwo,
+            indentity: self.music_id,
+            duration: self.duration,
+            name: self.name,
+            artist: self.artist,
+            artist_id: self.artist_id,
+            album: self.album,
+            album_id: self.album_id,
+            qualities: self.qualities,
+            music_pic: self.music_pic,
+            artist_pic: self.artist_pic,
+            album_pic: self.album_pic,
+        }
+    }
+}
+
+impl From<Music> for Model{
+    fn from(music: Music) -> Self {
+        Self{
+            name: music.name,
+            music_id: music.indentity,
+            duration: music.duration,
+            artist: music.artist,
+            artist_id: music.artist_id,
+            album: music.album,
+            album_id: music.album_id,
+            qualities: music.qualities,
+            music_pic: music.music_pic,
+            artist_pic: music.artist_pic,
+            album_pic: music.album_pic,
+        }
     }
 }
 

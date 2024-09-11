@@ -1058,6 +1058,7 @@ dependencies = [
  "lazy_static",
  "log",
  "md-5",
+ "once_cell",
  "rand",
  "regex",
  "reqwest",
