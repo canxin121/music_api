@@ -2,21 +2,31 @@ use crate::refactor::server::{KuwoMusicModel, CLIENT};
 
 use serde::{Deserialize, Serialize};
 
-use super::utils::{
-    build_music_rid_pic, build_web_albumpic_short, build_web_artistpic_short, parse_qualities_minfo,
-};
+use super::utils::{get_music_rid_pic, parse_qualities_minfo};
 
 pub async fn search_kuwo_musics(
     content: &str,
     page: u32,
     limit: u32,
 ) -> Result<Vec<KuwoMusicModel>, anyhow::Error> {
-    assert!(page >= 1, "Page must be greater than 0");
+    if page == 0 {
+        return Err(anyhow::anyhow!("page must be greater than 0"));
+    }
 
     let url = format!("http://search.kuwo.cn/r.s?client=kt&all={}&pn={}&rn={}&uid=794762570&ver=kwplayer_ar_9.2.2.1&vipver=1&show_copyright_off=1&newver=1&ft=music&cluster=0&strategy=2012&encoding=utf8&rformat=json&vermerge=1&mobi=1&issubtitle=1",urlencoding::encode(content),page-1,limit);
 
     let result: KuwoMusics = CLIENT.get(&url).send().await?.json().await?;
-    let musics = result.abslist.into_iter().map(|m| m.into()).collect();
+    let mut musics: Vec<KuwoMusicModel> = result.abslist.into_iter().map(|m| m.into()).collect();
+    let mut handles = Vec::with_capacity(musics.len());
+    for music in &musics {
+        let id = music.music_id.clone();
+        handles.push(tokio::spawn(async move { get_music_rid_pic(&id).await }))
+    }
+
+    for (music, handle) in musics.iter_mut().zip(handles) {
+        music.cover = handle.await?.ok();
+    }
+
     Ok(musics)
 }
 
@@ -61,6 +71,8 @@ pub struct KuwoMusics {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchMusic {
+    #[serde(default)]
+    pub cover: Option<String>,
     // #[serde(rename = "AARTIST")]
     // pub aartist: String,
     #[serde(rename = "ALBUM")]
@@ -169,7 +181,6 @@ pub struct SearchMusic {
 
 impl Into<crate::refactor::server::kuwo::model::Model> for SearchMusic {
     fn into(self) -> crate::refactor::server::kuwo::model::Model {
-        let musicrid_pic = build_music_rid_pic(&self.musicrid);
         crate::refactor::server::kuwo::model::Model {
             name: self.name,
             music_id: self.musicrid,
@@ -178,9 +189,9 @@ impl Into<crate::refactor::server::kuwo::model::Model> for SearchMusic {
             album: Some(self.album),
             album_id: Some(self.albumid),
             qualities: parse_qualities_minfo(&self.minfo).into(),
-            music_pic: musicrid_pic,
-            artist_pic: build_web_artistpic_short(&self.web_artistpic_short),
-            album_pic: build_web_albumpic_short(&self.web_albumpic_short),
+            cover: self.cover,
+            // artist_pic: build_web_artistpic_short(&self.web_artistpic_short),
+            // album_pic: build_web_albumpic_short(&self.web_albumpic_short),
             duration: self.duration.parse().ok(),
             // mv_vid: if self.mvpayinfo.vid.is_empty() {
             //     None

@@ -1,12 +1,14 @@
-use sea_orm::{entity::prelude::*, FromJsonQueryResult, Set};
+use sea_orm::{entity::prelude::*, ActiveValue::NotSet, FromJsonQueryResult, Set};
 use serde::{Deserialize, Serialize};
 
+use crate::refactor::data::interface::MusicServer;
 
 #[derive(Default, Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "playlist")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = true)]
     pub id: i64,
+    pub order: i64,
     pub name: String,
     #[sea_orm(nullable)]
     pub summary: Option<String>,
@@ -18,20 +20,21 @@ pub struct Model {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult)]
 pub struct PlayListSubscription {
     #[serde(rename = "type")]
-    pub type_field: String,
+    pub type_field: MusicServer,
     pub identity: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult)]
 pub struct PlayListSubscriptionVec(pub Vec<PlayListSubscription>);
 impl ActiveModel {
-    pub fn new(name: String, summary: Option<String>, cover: Option<String>) -> Self {
+    pub fn new(name: String, summary: Option<String>, cover: Option<String>, order: i64) -> Self {
         Self {
-            id: Default::default(),
+            id: NotSet,
             name: Set(name),
             summary: Set(summary),
             cover: Set(cover),
-            subscriptions: Default::default(),
+            subscriptions: (Default::default()),
+            order: Set(order),
         }
     }
 }

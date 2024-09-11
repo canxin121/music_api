@@ -1,4 +1,4 @@
-use crate::refactor::data::interface::quality::Quality;
+use crate::refactor::{data::interface::quality::Quality, server::CLIENT};
 
 pub fn decode_html_entities(input: String) -> String {
     input
@@ -59,31 +59,34 @@ pub fn parse_qualities_formats(formats: &str) -> Vec<Quality> {
     parse_qualities_minfo(&minfo)
 }
 
-pub fn build_web_albumpic_short(web_albumpic_short: &str) -> Option<String> {
-    if web_albumpic_short.is_empty() {
-        None
-    } else {
-        Some(format!(
-            "https://img2.kuwo.cn/star/albumcover/{}",
-            web_albumpic_short
-        ))
-    }
-}
-
-pub fn build_music_rid_pic(music_rid: &str) -> String {
-    format!(
+pub async fn get_music_rid_pic(music_rid: &str) -> Result<String, anyhow::Error> {
+    let url = format!(
         "http://artistpicserver.kuwo.cn/pic.web?corp=kuwo&type=rid_pic&pictype=500&size=500&rid={}",
         music_rid.replace("MUSIC_", "")
-    )
+    );
+    let resp = CLIENT.get(&url).send().await?;
+    let text = resp.text().await?;
+    Ok(text)
 }
 
-pub fn build_web_artistpic_short(web_artistpic_short: &str) -> Option<String> {
-    if web_artistpic_short.is_empty() {
-        None
-    } else {
-        Some(format!(
-            "https://img1.kuwo.cn/star/starheads/{}",
-            web_artistpic_short
-        ))
-    }
-}
+// pub fn build_web_albumpic_short(web_albumpic_short: &str) -> Option<String> {
+//     if web_albumpic_short.is_empty() {
+//         None
+//     } else {
+//         Some(format!(
+//             "https://img2.kuwo.cn/star/albumcover/{}",
+//             web_albumpic_short
+//         ))
+//     }
+// }
+
+// pub fn build_web_artistpic_short(web_artistpic_short: &str) -> Option<String> {
+//     if web_artistpic_short.is_empty() {
+//         None
+//     } else {
+//         Some(format!(
+//             "https://img1.kuwo.cn/star/starheads/{}",
+//             web_artistpic_short
+//         ))
+//     }
+// }

@@ -11,7 +11,7 @@ use tokio::sync::RwLock;
 
 static DB_POOL: OnceCell<Arc<RwLock<Option<DatabaseConnection>>>> = OnceCell::new();
 
-pub async fn init_db(database_url: &str) -> Result<(),anyhow::Error> {
+pub async fn init_db(database_url: &str) -> Result<(), anyhow::Error> {
     let db = Database::connect(database_url).await?;
     let connection = Arc::new(RwLock::new(Some(db)));
 
@@ -35,8 +35,16 @@ pub async fn get_db() -> Option<DatabaseConnection> {
 pub async fn close_db() {
     if let Some(db) = DB_POOL.get() {
         if let Some(conn) = db.read().await.clone() {
-            conn.close().await;
+            let _ = conn.close().await;
         }
         *db.write().await = None;
+    }
+}
+
+pub async fn db_inited() -> bool {
+    if let Some(db) = DB_POOL.get() {
+        db.read().await.clone().is_some()
+    } else {
+        false
     }
 }

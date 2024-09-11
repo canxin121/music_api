@@ -1,8 +1,7 @@
-use sea_orm::Set;
 use serde::{Deserialize, Serialize};
 use anyhow::Result;
 
-use crate::refactor::server::{KuwoMusicActiveModel, CLIENT};
+use crate::refactor::server::CLIENT;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

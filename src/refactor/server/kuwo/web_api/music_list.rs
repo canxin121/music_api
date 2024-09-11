@@ -7,7 +7,7 @@ use crate::refactor::{
     server::{KuwoMusicModel, CLIENT},
 };
 
-use super::utils::{build_music_rid_pic, parse_qualities_minfo};
+use super::utils::{get_music_rid_pic, parse_qualities_minfo};
 
 pub fn gen_music_list_url(content: &str, page: u32, limit: u32) -> String {
     format!("http://search.kuwo.cn/r.s?all={}&pn={}&rn={limit}&rformat=json&encoding=utf8&ver=mbox&vipver=MUSIC_8.7.7.0_BCS37&plat=pc&devid=28156413&ft=playlist&pay=0&needliveshow=0",encode(content),page-1)
@@ -40,7 +40,17 @@ pub async fn get_kuwo_musics_of_music_list(
 ) -> Result<Vec<KuwoMusicModel>> {
     let url = gen_get_musics_url(playlist_id, page, limit);
 
-    let musiclist: GetMusicListResult = CLIENT.get(url).send().await?.json().await?;
+    let mut musiclist: GetMusicListResult = CLIENT.get(url).send().await?.json().await?;
+    let mut handles = Vec::with_capacity(musiclist.musiclist.len());
+    for music in &musiclist.musiclist {
+        let id = music.id.clone();
+        handles.push(tokio::spawn(async move { get_music_rid_pic(&id).await }))
+    }
+
+    for (music, handle) in musiclist.musiclist.iter_mut().zip(handles) {
+        music.cover = handle.await?.ok();
+    }
+
     let musiclist = musiclist.musiclist.into_iter().map(|m| m.into()).collect();
     Ok(musiclist)
 }
@@ -101,7 +111,6 @@ pub struct SearchMusicList {
 impl Into<Playlist> for SearchMusicList {
     fn into(self) -> Playlist {
         Playlist {
-            from_db: false,
             server: crate::refactor::data::interface::MusicServer::Kuwo,
             type_field: crate::refactor::data::interface::playlist::PlaylistType::UserPlaylist,
             identity: self.playlistid,
@@ -112,6 +121,7 @@ impl Into<Playlist> for SearchMusicList {
             creator_id: None,
             play_time: self.playcnt.parse().ok(),
             music_num: self.songnum.parse().ok(),
+            subscription: None,
         }
     }
 }
@@ -148,6 +158,8 @@ pub struct GetMusicListResult {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MusiclistMusic {
+    #[serde(default)]
+    pub cover: Option<String>,
     // #[serde(default)]
     // pub musiclist_pic: String,
     // #[serde(rename = "AARTIST")]
@@ -158,7 +170,7 @@ pub struct MusiclistMusic {
     // pub fartist: String,
     // #[serde(rename = "FSONGNAME")]
     // pub fsongname: String,
-    // #[serde(rename = "MINFO")]
+    #[serde(rename = "MINFO")]
     pub minfo: String,
     // #[serde(rename = "N_MINFO")]
     // pub n_minfo: String,
@@ -226,7 +238,6 @@ pub struct MusiclistMusic {
 
 impl Into<crate::refactor::server::kuwo::model::Model> for MusiclistMusic {
     fn into(self) -> crate::refactor::server::kuwo::model::Model {
-        let music_pic = build_music_rid_pic(&self.id);
         crate::refactor::server::kuwo::model::Model {
             name: self.name,
             music_id: self.id,
@@ -235,9 +246,9 @@ impl Into<crate::refactor::server::kuwo::model::Model> for MusiclistMusic {
             album: Some(self.album),
             album_id: Some(self.albumid),
             qualities: parse_qualities_minfo(&self.minfo).into(),
-            music_pic,
-            artist_pic: None,
-            album_pic: None,
+            cover: self.cover,
+            // artist_pic: None,
+            // album_pic: None,
             duration: self.duration.parse().ok(),
             // mv_vid: if self.mvpayinfo.vid.is_empty() {
             //     None

@@ -3,7 +3,9 @@ use sea_orm_migration::{prelude::*, schema::integer};
 
 use crate::refactor::data::models::{music_aggregator, playlist, playlist_music_junction::Column};
 
-use super::{create_music_table::MusicTable, create_playlist_table::PlaylistTable};
+use super::{
+    create_music_aggregator_table::MusicAggregatorTable, create_playlist_table::PlaylistTable,
+};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -17,6 +19,7 @@ impl MigrationTrait for Migration {
                     .table(PlaylistMusicJunctionTable::PlaylistMusicJunction)
                     .col(integer(Column::PlaylistId))
                     .col(integer(Column::MusicAggregatorId))
+                    .col(integer(Column::Order))
                     .primary_key(
                         Index::create()
                             .table(PlaylistMusicJunctionTable::PlaylistMusicJunction)
@@ -39,7 +42,10 @@ impl MigrationTrait for Migration {
                                 PlaylistMusicJunctionTable::PlaylistMusicJunction,
                                 Column::MusicAggregatorId,
                             )
-                            .to(MusicTable::Music, music_aggregator::Column::Id)
+                            .to(
+                                MusicAggregatorTable::MusicAggragator,
+                                music_aggregator::Column::Identity,
+                            )
                             .on_delete(ForeignKeyAction::Cascade)
                             .on_update(ForeignKeyAction::Cascade),
                     )

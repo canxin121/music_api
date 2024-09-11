@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 aes = "0.8.4"
-anyhow = "1.0.86"
+anyhow = "1.0.87"
 async-trait = "0.1.82"
 base64 = "0.22.1"
 cbc = "0.1.2"
@@ -31,14 +31,19 @@ reqwest = { version = "0.12.7", features = [
 reqwest-middleware = "0.3.3"
 reqwest-retry = "0.6.1"
 rsa = { version = "0.9.6", features = ["hazmat"] }
-sea-orm = { version = "1.0.1", default-features = false, features = ["sqlx-sqlite", "runtime-tokio-rustls", "serde_json", "with-json"] }
+sea-orm = { version = "1.0.1", default-features = false, features = [
+    "sqlx-sqlite",
+    "runtime-tokio-rustls",
+    "serde_json",
+    "with-json",
+] }
 sea-orm-migration = { version = "1.0.1", features = [
     "sqlx-sqlite",
     "runtime-tokio-rustls",
 ], default-features = false }
 sea-query = { version = "0.31.0" }
 sea-query-binder = { version = "0.6.0", features = ["sqlx-any", "sqlx-sqlite"] }
-serde = { version = "1.0.209", features = ["derive"] }
+serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
 sha2 = "0.10.8"
 # sqlx = { version = "0.8.2", features = ["runtime-tokio", "sqlite"] }

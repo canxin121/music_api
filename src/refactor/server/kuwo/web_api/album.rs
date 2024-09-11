@@ -6,7 +6,7 @@ use crate::refactor::{
     server::{KuwoMusicModel, CLIENT},
 };
 
-use super::utils::{build_music_rid_pic, build_web_albumpic_short, build_web_artistpic_short};
+use super::utils::get_music_rid_pic;
 
 pub async fn get_kuwo_music_album(
     album_id: &str,
@@ -32,9 +32,20 @@ pub async fn get_kuwo_music_album(
     let mut musics = Vec::new();
     std::mem::swap(&mut musics, &mut result.musiclist);
 
+    let mut handles = Vec::with_capacity(musics.len());
+
     for music in musics.iter_mut() {
         music.album = album_name.to_string();
         music.album_id = album_id.to_string();
+        let album_id = album_id.to_string();
+        handles.push(async move {
+            let music_pic = get_music_rid_pic(&album_id).await?;
+            Ok::<String, anyhow::Error>(music_pic)
+        })
+    }
+
+    for (music, handle) in musics.iter_mut().zip(handles.into_iter()) {
+        music.cover = handle.await.ok();
     }
 
     let musics = musics
@@ -44,7 +55,12 @@ pub async fn get_kuwo_music_album(
             model
         })
         .collect();
-    Ok((Some(result.into()), musics))
+
+    if page == 1 {
+        Ok((Some(result.into()), musics))
+    } else {
+        Ok((None, musics))
+    }
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -89,7 +105,6 @@ pub struct Album {
 impl Into<Playlist> for Album {
     fn into(self) -> Playlist {
         Playlist {
-            from_db: false,
             server: crate::refactor::data::interface::MusicServer::Kuwo,
             type_field: PlaylistType::Album,
             identity: self.id,
@@ -104,6 +119,7 @@ impl Into<Playlist> for Album {
             } else {
                 None
             },
+            subscription: None,
         }
     }
 }
@@ -111,6 +127,8 @@ impl Into<Playlist> for Album {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AlbumMusic {
+    #[serde(default)]
+    pub cover: Option<String>,
     #[serde(default)]
     pub album: String,
     #[serde(default)]
@@ -180,17 +198,16 @@ pub struct AlbumMusic {
     // pub track: String,
     // pub uploader: String,
     // pub uptime: String,
-    #[serde(rename = "web_albumpic_short")]
-    pub web_albumpic_short: String,
-    #[serde(rename = "web_artistpic_short")]
-    pub web_artistpic_short: String,
+    // #[serde(rename = "web_albumpic_short")]
+    // pub web_albumpic_short: String,
+    // #[serde(rename = "web_artistpic_short")]
+    // pub web_artistpic_short: String,
     // #[serde(rename = "web_timingonline")]
     // pub web_timingonline: String,
 }
 
 impl Into<crate::refactor::server::kuwo::model::Model> for AlbumMusic {
     fn into(self) -> crate::refactor::server::kuwo::model::Model {
-        let music_pic = build_music_rid_pic(&self.id);
         crate::refactor::server::kuwo::model::Model {
             name: self.name,
             music_id: self.id,
@@ -199,9 +216,9 @@ impl Into<crate::refactor::server::kuwo::model::Model> for AlbumMusic {
             album: Some(self.album),
             album_id: Some(self.album_id),
             qualities: Default::default(),
-            music_pic: music_pic,
-            artist_pic: build_web_artistpic_short(&self.web_artistpic_short),
-            album_pic: build_web_albumpic_short(&self.web_albumpic_short),
+            cover: self.cover,
+            // artist_pic: build_web_artistpic_short(&self.web_artistpic_short),
+            // album_pic: build_web_albumpic_short(&self.web_albumpic_short),
             duration: None,
         }
     }

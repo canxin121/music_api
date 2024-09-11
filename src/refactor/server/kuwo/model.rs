@@ -1,4 +1,7 @@
-use crate::refactor::data::{interface::{music::Music, quality::QualityVec}, models::music_aggregator};
+use crate::refactor::data::{
+    interface::{music_aggregator::Music, quality::QualityVec},
+    models::music_aggregator,
+};
 use anyhow::Result;
 use sea_orm::entity::prelude::*;
 
@@ -10,15 +13,15 @@ pub struct Model {
     pub name: String,
     #[sea_orm(primary_key)]
     pub music_id: String,
-    pub duration:Option<u64>,
+    pub duration: Option<i64>,
     pub artist: String,
     pub artist_id: String,
     pub album: Option<String>,
     pub album_id: Option<String>,
     pub qualities: QualityVec,
-    pub music_pic: String,
-    pub artist_pic: Option<String>,
-    pub album_pic: Option<String>,
+    pub cover: Option<String>,
+    // pub artist_pic: Option<String>,
+    // pub album_pic: Option<String>,
     // pub mv_vid: Option<String>,
 }
 
@@ -31,7 +34,7 @@ impl Model {
 
 impl Into<Music> for Model {
     fn into(self) -> Music {
-        Music{
+        Music {
             from_db: false,
             server: crate::refactor::data::interface::MusicServer::Kuwo,
             indentity: self.music_id,
@@ -42,16 +45,16 @@ impl Into<Music> for Model {
             album: self.album,
             album_id: self.album_id,
             qualities: self.qualities,
-            music_pic: self.music_pic,
-            artist_pic: self.artist_pic,
-            album_pic: self.album_pic,
+            cover: self.cover,
+            // artist_pic: self.artist_pic,
+            // album_pic: self.album_pic,
         }
     }
 }
 
-impl From<Music> for Model{
+impl From<Music> for Model {
     fn from(music: Music) -> Self {
-        Self{
+        Self {
             name: music.name,
             music_id: music.indentity,
             duration: music.duration,
@@ -60,9 +63,9 @@ impl From<Music> for Model{
             album: music.album,
             album_id: music.album_id,
             qualities: music.qualities,
-            music_pic: music.music_pic,
-            artist_pic: music.artist_pic,
-            album_pic: music.album_pic,
+            cover: music.cover,
+            // artist_pic: music.artist_pic,
+            // album_pic: music.album_pic,
         }
     }
 }

@@ -23,7 +23,7 @@ pub static CLIENT: LazyLock<ClientWithMiddleware> = LazyLock::new(|| {
 pub use kuwo::model::ActiveModel as KuwoMusicActiveModel;
 pub use kuwo::model::Model as KuwoMusicModel;
 
-use super::data::interface::music::Music;
+use super::data::interface::music_aggregator::Music;
 use super::data::interface::playlist::Playlist;
 use super::data::interface::MusicServer;
 
@@ -34,14 +34,17 @@ impl Music {
         page: u32,
         size: u32,
     ) -> Result<Vec<Music>> {
-        let mut handles:Vec<tokio::task::JoinHandle<Vec<Music>>> = Vec::with_capacity(MusicServer::length());
+        let mut handles: Vec<tokio::task::JoinHandle<Vec<Music>>> =
+            Vec::with_capacity(MusicServer::length());
         let content = Arc::new(content);
         for server in servers {
             let content = Arc::clone(&content);
             match server {
                 MusicServer::Kuwo => {
                     handles.push(tokio::spawn(async move {
-                        match kuwo::web_api::music::search_kuwo_musics(content.as_ref(), page, size).await {
+                        match kuwo::web_api::music::search_kuwo_musics(content.as_ref(), page, size)
+                            .await
+                        {
                             Ok(musics) => musics.into_iter().map(|music| music.into()).collect(),
                             Err(e) => {
                                 log::error!("Failed to search kuwo musics: {}", e);
@@ -51,6 +54,7 @@ impl Music {
                     }));
                 }
                 MusicServer::Netease => todo!(),
+                MusicServer::Database => todo!(),
             }
         }
         let mut musics = Vec::with_capacity(MusicServer::length());
@@ -59,18 +63,83 @@ impl Music {
         }
         Ok(musics)
     }
+
+    // 由于专辑歌曲较少，有的平台不分页，因此第一次就返回 第一页 的歌曲(可能就是全部)
+    pub async fn get_album(&self, page: u32, limit: u32) -> Result<(Option<Playlist>, Vec<Music>)> {
+        match self.server {
+            MusicServer::Kuwo => {
+                let (album, musics) = kuwo::web_api::album::get_kuwo_music_album(
+                    self.album_id
+                        .as_ref()
+                        .ok_or(anyhow::anyhow!("No album id"))?,
+                    self.album
+                        .as_ref()
+                        .ok_or(anyhow::anyhow!("No album name"))?,
+                    page,
+                    limit,
+                )
+                .await?;
+                let musics = musics.into_iter().map(|music| music.into()).collect();
+                Ok((album, musics))
+            }
+            MusicServer::Netease => todo!(),
+            MusicServer::Database => todo!(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod server_music_test {
+    use super::super::data::interface::MusicServer;
+    use super::*;
+
+    #[tokio::test]
+    async fn test_search() {
+        let musics = Music::search(vec![MusicServer::Kuwo], "Lemon 米津玄师".to_string(), 1, 10)
+            .await
+            .unwrap();
+        println!("{:?}", musics);
+    }
 }
 
 impl Playlist {
     pub async fn search(
-        target: Option<MusicServer>,
-        content: &str,
+        servers: Vec<MusicServer>,
+        content: String,
         page: u32,
         size: u32,
     ) -> Result<Vec<Playlist>> {
-        let kuwo_playlists =
-            kuwo::web_api::music_list::search_kuwo_music_list(content, page, size).await?;
-        Ok(kuwo_playlists)
+        if servers.is_empty() {
+            return Err(anyhow::anyhow!("No server specified"));
+        }
+        let mut handles: Vec<tokio::task::JoinHandle<Result<Vec<Playlist>>>> =
+            Vec::with_capacity(MusicServer::length());
+        let content = Arc::new(content);
+        for server in servers {
+            let content = Arc::clone(&content);
+            match server {
+                MusicServer::Kuwo => {
+                    handles.push(tokio::spawn(async move {
+                        kuwo::web_api::music_list::search_kuwo_music_list(
+                            content.as_str(),
+                            page,
+                            size,
+                        )
+                        .await
+                    }));
+                }
+                MusicServer::Netease => todo!(),
+                MusicServer::Database => todo!(),
+            }
+        }
+        let mut playlists = Vec::with_capacity(MusicServer::length());
+        for handle in handles {
+            match handle.await? {
+                Ok(mut ps) => playlists.append(&mut ps),
+                Err(e) => log::error!("Failed to search playlist: {}", e),
+            }
+        }
+        Ok(playlists)
     }
 
     pub async fn get_musics(&self, page: u32, size: u32) -> Result<Vec<Music>> {
@@ -88,9 +157,30 @@ impl Playlist {
                 Ok(kuwo_musics)
             }
             MusicServer::Netease => todo!(),
+            MusicServer::Database => todo!(),
         }
     }
 }
 
 #[cfg(test)]
-mod server_test {}
+mod server_test {
+    #[tokio::test]
+    async fn test_search() {
+        let playlists =
+            super::Playlist::search(vec![super::MusicServer::Kuwo], "周杰伦".to_string(), 1, 10)
+                .await
+                .unwrap();
+        println!("{:?}", playlists);
+    }
+    #[tokio::test]
+    async fn test_get_musics() {
+        let playlist =
+            super::Playlist::search(vec![super::MusicServer::Kuwo], "周杰伦".to_string(), 1, 10)
+                .await
+                .unwrap()
+                .pop()
+                .unwrap();
+        let musics = playlist.get_musics(1, 10).await.unwrap();
+        println!("{:?}", musics);
+    }
+}

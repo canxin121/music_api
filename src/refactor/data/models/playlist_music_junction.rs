@@ -12,13 +12,15 @@ impl EntityName for Entity {
 #[derive(Clone, Debug, PartialEq, Eq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
     pub playlist_id: i64,
-    pub music_aggregator_id: i64,
+    pub music_aggregator_id: String,
+    pub order: i64,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     PlaylistId,
     MusicAggregatorId,
+    Order,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
@@ -52,7 +54,7 @@ impl RelationTrait for Relation {
                 .into(),
             Relation::MusicAggregator => Entity::belongs_to(super::music_aggregator::Entity)
                 .from(Column::MusicAggregatorId)
-                .to(super::music_aggregator::Column::Id)
+                .to(super::music_aggregator::Column::Identity)
                 .on_delete(sea_query::ForeignKeyAction::Cascade)
                 .on_update(sea_query::ForeignKeyAction::Cascade)
                 .into(),
@@ -83,10 +85,11 @@ impl ColumnTrait for Column {
 impl ActiveModelBehavior for ActiveModel {}
 
 impl ActiveModel {
-    pub fn new(playlist_id: i64, music_aggregator_id: i64) -> Self {
+    pub fn new(playlist_id: i64, music_aggregator_id: String, order: i64) -> Self {
         Self {
             playlist_id: Set(playlist_id),
             music_aggregator_id: Set(music_aggregator_id),
+            order: Set(order),
         }
     }
 }

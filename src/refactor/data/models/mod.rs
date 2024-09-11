@@ -49,6 +49,7 @@ mod orm_test {
             "Album".to_owned(),
             Some("Summary".to_owned()),
             Some("Cover".to_owned()),
+            1,
         );
         let album_active = album.save(db).await.unwrap();
 
@@ -56,12 +57,13 @@ mod orm_test {
         println!("{:?}", music1_model);
 
         let mut music1_active = music1_model.into_active_model();
-        music1_active.id = NotSet;
+        music1_active.identity = NotSet;
         let music1_active = music1_active.save(db).await.unwrap();
 
         let junction_active = PlaylistMusicJunctionActiveModel::new(
             album_active.id.unwrap(),
-            music1_active.id.unwrap(),
+            music1_active.identity.unwrap(),
+            1,
         );
         PlaylistMusicJunctionEntity::insert(junction_active)
             .exec(db)
@@ -94,5 +96,6 @@ mod orm_test {
             .all(&db)
             .await
             .unwrap();
+        println!("{:?}", musics);
     }
 }

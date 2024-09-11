@@ -3,10 +3,10 @@ use sea_orm::entity::prelude::*;
 #[derive(Default, Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "music_aggregator")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = true)]
-    pub id: i64,
-    pub kuwo_music_id: String,
-    pub netease_music_id: String,
+    #[sea_orm(primary_key)]
+    pub identity: String,
+    pub kuwo_music_id: Option<String>,
+    pub netease_music_id: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]
@@ -21,7 +21,7 @@ impl RelationTrait for Relation {
         match self {
             Relation::PlaylistMusicJunction => {
                 Entity::has_many(super::playlist_music_junction::Entity)
-                    .from(Column::Id)
+                    .from(Column::Identity)
                     .to(super::playlist_music_junction::Column::MusicAggregatorId)
                     .on_delete(sea_query::ForeignKeyAction::Cascade)
                     .on_update(sea_query::ForeignKeyAction::Cascade)
