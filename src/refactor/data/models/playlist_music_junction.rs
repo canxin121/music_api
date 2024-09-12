@@ -30,7 +30,7 @@ pub enum PrimaryKey {
 }
 
 impl PrimaryKeyTrait for PrimaryKey {
-    type ValueType = (i64, i64);
+    type ValueType = (i64, String);
 
     fn auto_increment() -> bool {
         false

@@ -61,6 +61,7 @@ impl From<playlist::Model> for Playlist {
 }
 
 impl Playlist {
+    /// 创建一个新的歌单， 但是不会保存到数据库
     pub fn new(
         name: String,
         summary: Option<String>,
@@ -82,15 +83,11 @@ impl Playlist {
         }
     }
 
-    /// 保存一个歌单， 但是不会保存歌单中的音乐
-    /// 如果是数据库歌单， 会更新数据库中的歌单
-    /// 如果是其他平台的歌单， 会保存到数据库中
-    /// 返回保存后的歌单
-    pub async fn save_to_db(&self) -> Result<Self> {
+    pub async fn update_to_db(&self)->Result<Self>{
         let db = get_db()
             .await
             .ok_or(anyhow::anyhow!("Database is not inited."))?;
-
+        // 如果是数据库歌单， 且有id， 则更新数据库中的歌单
         if self.server == MusicServer::Database && !self.identity.is_empty() {
             if let Ok(id) = self.identity.parse::<i64>() {
                 let playlist = playlist::ActiveModel {
@@ -109,27 +106,38 @@ impl Playlist {
             } else {
                 return Err(anyhow::anyhow!("Invalid playlist id of Database playlist."));
             }
-        } else {
-            let order = playlist::Entity::find().count(&db).await?;
-            let playlist = playlist::ActiveModel::new(
-                self.name.clone(),
-                self.summary.clone(),
-                self.cover.clone(),
-                order as i64,
-            );
-            let id = playlist::Entity::insert(playlist)
-                .exec(&db)
-                .await?
-                .last_insert_id;
-            let model = playlist::Entity::find_by_id(id)
-                .one(&db)
-                .await?
-                .ok_or(anyhow::anyhow!("Failed to find playlist after insert."))?;
-            Ok(model.into())
+        }
+        else{
+            return Err(anyhow::anyhow!("Can't update playlist from non-database server."));
         }
     }
 
-    pub async fn del_from_db(&self) -> Result<()> {
+    pub async fn insert_to_db(&self)->Result<()>{
+        let db = get_db()
+            .await
+            .ok_or(anyhow::anyhow!("Database is not inited."))?;
+        if self.server == MusicServer::Database && !self.identity.is_empty() {
+            return Err(anyhow::anyhow!("Playlist from db, can't insert."));
+        }
+
+        let order = playlist::Entity::find().count(&db).await?;
+        let playlist = playlist::ActiveModel::new(
+            self.name.clone(),
+            self.summary.clone(),
+            self.cover.clone(),
+            order as i64,
+        );
+
+        playlist::Entity::insert(playlist)
+            .exec(&db)
+            .await?;
+        Ok(())
+    }
+
+    /// 从数据库中删除一个歌单, 同时删除歌单和音乐的关联
+    /// 如果是其他平台的歌单， 则无法删除
+    /// 注意这将取走歌单的所有权， ffi时应当注意生命周期
+    pub async fn del_from_db(self) -> Result<()> {
         if self.server != MusicServer::Database {
             return Err(anyhow::anyhow!(
                 "Can't delete playlist from non-database server."
@@ -143,7 +151,8 @@ impl Playlist {
             .await?;
         Ok(())
     }
-
+    
+    /// 从数据库中获取所有歌单
     pub async fn get_from_db() -> Result<Vec<Self>> {
         let db = get_db()
             .await
@@ -152,7 +161,8 @@ impl Playlist {
         Ok(models.into_iter().map(|m| m.into()).collect())
     }
 
-    pub async fn add_aggs_to_db(&self, music_aggs: Vec<MusicAggregator>) -> Result<()> {
+    /// 将音乐添加到数据库歌单中
+    pub async fn add_aggs_to_db(&self, music_aggs: &Vec<MusicAggregator>) -> Result<()> {
         let db = get_db()
             .await
             .ok_or(anyhow::anyhow!("Database is not inited."))?;
@@ -166,13 +176,14 @@ impl Playlist {
         let mut order = count as i64;
 
         for music_agg in music_aggs {
-            music_agg.save_to_db().await?;
+            music_agg.insert_to_db().await?;
 
             let junction = playlist_music_junction::ActiveModel::new(
                 self.identity.parse::<i64>()?,
                 music_agg.identity(),
                 order,
             );
+            println!("{:?}", junction);
             playlist_music_junction::Entity::insert(junction)
                 .exec(&db)
                 .await?;
@@ -183,13 +194,16 @@ impl Playlist {
 }
 
 #[cfg(test)]
-mod test_play_list {
+mod test_playlist {
     use sea_orm_migration::MigratorTrait as _;
 
     use crate::refactor::data::{init_db, migrations::Migrator};
 
     use super::*;
     async fn re_init_db() {
+        // 初始化log
+        tracing_subscriber::fmt::init();
+        
         let db_file = "./test.db";
         let path = std::path::Path::new(db_file);
         if path.exists() {
@@ -211,11 +225,9 @@ mod test_play_list {
             vec![],
         );
         println!("{:?}", playlist);
-        let mut playlist = playlist.save_to_db().await.unwrap();
-        println!("{:?}", playlist);
-        playlist.name = "test2".to_string();
-        let playlist = playlist.save_to_db().await.unwrap();
-        println!("{:?}", playlist);
+        playlist.insert_to_db().await.unwrap();
+        let playlists = Playlist::get_from_db().await.unwrap();
+        assert!(playlists.len() == 1);
     }
 
     #[tokio::test]
@@ -227,9 +239,10 @@ mod test_play_list {
             None,
             vec![],
         );
-        let playlist = playlist.save_to_db().await.unwrap();
-        assert!(Playlist::get_from_db().await.unwrap().len() == 1);
-        playlist.del_from_db().await.unwrap();
+        playlist.insert_to_db().await.unwrap();
+        let playlists = Playlist::get_from_db().await.unwrap();
+        assert!(playlists.len() == 1);
+        playlists.into_iter().next().unwrap().del_from_db().await.unwrap();
         assert!(Playlist::get_from_db().await.unwrap().len() == 0);
     }
 
@@ -242,12 +255,16 @@ mod test_play_list {
             None,
             vec![],
         );
-        let playlist = playlist.save_to_db().await.unwrap();
+        playlist.insert_to_db().await.unwrap();
+        
+        let playlist = Playlist::get_from_db().await.unwrap().into_iter().next().unwrap();
+        
         let aggs = vec![];
         let aggs =
             MusicAggregator::search(aggs, vec![MusicServer::Kuwo], "Aimer".to_string(), 1, 30)
                 .await
                 .unwrap();
-        playlist.add_aggs_to_db(aggs).await.unwrap();
+        
+        playlist.add_aggs_to_db(&aggs).await.unwrap();
     }
 }

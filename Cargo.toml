@@ -48,4 +48,5 @@ serde_json = "1.0.128"
 sha2 = "0.10.8"
 # sqlx = { version = "0.8.2", features = ["runtime-tokio", "sqlite"] }
 tokio = { version = "1.40.0", features = ["full"] }
+tracing-subscriber = "0.3.18"
 urlencoding = "2.1.3"

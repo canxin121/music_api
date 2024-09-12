@@ -171,7 +171,7 @@ pub async fn find_best_match_music_aggregator(
     aggregator_search
         .search_music_aggregator(
             sources,
-            &format!("{} {}", info.name, info.artist.join(" ")),
+            &format!("{}#+#{}", info.name, info.artist.join(" ")),
             1,
             50,
             filter,

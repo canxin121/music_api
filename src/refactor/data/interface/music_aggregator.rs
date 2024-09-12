@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use sea_orm::{EntityTrait, IntoActiveModel as _, ModelTrait, Set};
+use sea_orm::{EntityTrait, IntoActiveModel as _, ModelTrait, Set, Unchanged};
 use serde::{Deserialize, Serialize};
 
 use crate::refactor::{
@@ -11,7 +11,11 @@ use crate::refactor::{
     server::kuwo,
 };
 
-use super::{quality::QualityVec, utils::is_artist_equal, MusicServer};
+use super::{
+    quality::QualityVec,
+    utils::{is_artist_equal, split_string},
+    MusicServer,
+};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Music {
@@ -28,30 +32,61 @@ pub struct Music {
     pub cover: Option<String>,
 }
 
+/// Music被添加了外键约束， 无需手动删除
+/// 同时不希望Music被外部直接使用，而是使用MusicAggregator，因此不能直接获得Music
 impl Music {
     /// 从数据库中获取Music
-    pub async fn get_from_db(servers: Vec<MusicServer>) -> Result<Vec<Self>, anyhow::Error> {
-        let db = get_db().await.expect("Database is not inited");
-        let mut musics = Vec::new();
-        for server in servers {
-            match server {
-                MusicServer::Kuwo => {
-                    let models = kuwo::model::Entity::find().all(&db).await?;
-                    for model in models {
-                        musics.push(model.into());
-                    }
-                }
-                MusicServer::Netease => todo!(),
-                MusicServer::Database => todo!(),
-            }
+    // pub async fn get_from_db(servers: Vec<MusicServer>) -> Result<Vec<Self>, anyhow::Error> {
+    //     let db = get_db().await.expect("Database is not inited");
+    //     let mut musics = Vec::new();
+    //     for server in servers {
+    //         match server {
+    //             MusicServer::Kuwo => {
+    //                 let models = kuwo::model::Entity::find().all(&db).await?;
+    //                 for model in models {
+    //                     musics.push(model.into());
+    //                 }
+    //             }
+    //             MusicServer::Netease => todo!(),
+    //             MusicServer::Database => todo!(),
+    //         }
+    //     }
+    //     Ok(musics)
+    // }
+
+    /// 允许外部调用更新音乐的功能
+    pub async fn update_to_db(&self) -> anyhow::Result<Self> {
+        if !self.from_db {
+            return Err(anyhow::anyhow!("Music not from db, can't update"));
         }
-        Ok(musics)
+
+        let db = get_db()
+            .await
+            .ok_or(anyhow::anyhow!("Database is not inited"))?;
+        match self.server {
+            MusicServer::Kuwo => {
+                let model: kuwo::model::Model = self.clone().into();
+                let mut active = model.into_active_model();
+                active.name = Set(self.name.clone());
+                active.album = Set(self.album.clone());
+                active.album_id = Set(self.album_id.clone());
+                active.artist = Set(self.artist.clone());
+                active.artist_id = Set(self.artist_id.clone());
+                active.duration = Set(self.duration);
+                active.cover = Set(self.cover.clone());
+
+                let model = kuwo::model::Entity::update(active).exec(&db).await?;
+                return Ok(model.into());
+            }
+            MusicServer::Netease => todo!(),
+            MusicServer::Database => todo!(),
+        }
     }
 
     /// 将Music保存到数据库中对应的Server表中
     /// 如果来自数据库，则更新
     /// 如果不来自数据库，则插入
-    pub async fn save_to_db(&self) -> Result<Self, anyhow::Error> {
+    pub(crate) async fn insert_to_db(&self) -> anyhow::Result<()> {
         let db = get_db()
             .await
             .ok_or(anyhow::anyhow!("Database is not inited"))?;
@@ -59,123 +94,99 @@ impl Music {
         match self.server {
             MusicServer::Kuwo => {
                 if self.from_db {
-                    let model = kuwo::model::Entity::find_by_id(&self.indentity)
-                        .one(&db)
-                        .await?
-                        .ok_or(anyhow::anyhow!("Music from db, but not found"))?;
-                    let mut active = model.into_active_model();
-                    active.album = Set(self.album.clone());
-                    active.album_id = Set(self.album_id.clone());
-                    active.artist = Set(self.artist.clone());
-                    active.artist_id = Set(self.artist_id.clone());
-                    active.duration = Set(self.duration);
-                    active.cover = Set(self.cover.clone());
-                    // active.artist_pic = Set(self.artist_pic.clone());
-                    // active.album_pic = Set(self.album_pic.clone());
-                    let model = kuwo::model::Entity::update(active).exec(&db).await?;
-                    return Ok(model.into());
-                } else {
-                    let model = kuwo::model::Entity::find_by_id(&self.indentity)
-                        .one(&db)
-                        .await?;
-                    if model.is_some() {
-                        return Ok(self.clone());
-                    }
-                    let clone = self.clone();
-                    let music_id = clone.indentity.clone();
-                    let model = kuwo::model::Model::from(clone);
-                    let active = model.into_active_model();
-                    kuwo::model::Entity::insert(active).exec(&db).await?;
-                    let model = kuwo::model::Entity::find_by_id(music_id)
-                        .one(&db)
-                        .await?
-                        .ok_or(anyhow::anyhow!("Failed to find music after insert"))?;
-                    return Ok(model.into());
+                    return Err(anyhow::anyhow!("Music from db, can't insert"));
                 }
+                let clone = self.clone();
+                let model = kuwo::model::Model::from(clone);
+                let active = model.into_active_model();
+                kuwo::model::Entity::insert(active).exec(&db).await?;
+                return Ok(());
             }
             MusicServer::Netease => todo!(),
-            MusicServer::Database => todo!(),
-        }
-    }
-
-    /// 从数据库中删除对应的音乐
-    /// 如果Music不存在， 则不会进行任何操作
-    pub async fn del_from_db(&self) -> Result<(), anyhow::Error> {
-        let db = get_db()
-            .await
-            .ok_or(anyhow::anyhow!("Database is not inited"))?;
-        match self.server {
-            MusicServer::Kuwo => {
-                if let Err(e) = kuwo::model::Entity::delete_by_id(&self.indentity)
-                    .exec(&db)
-                    .await
-                {
-                    match e {
-                        sea_orm::DbErr::RecordNotFound(_) => {}
-                        other => return Err(anyhow::anyhow!("Failed to delete music: {}", other)),
-                    }
-                };
+            MusicServer::Database => {
+                return Err(anyhow::anyhow!("Music from db, can't insert"));
             }
-            MusicServer::Netease => todo!(),
-            MusicServer::Database => todo!(),
         }
-        Ok(())
     }
+
+    // 从数据库中删除对应的音乐
+    // 如果Music不存在， 则不会进行任何操作
+    // pub(crate) async fn del_from_db(&self) -> Result<(), anyhow::Error> {
+    //     let db = get_db()
+    //         .await
+    //         .ok_or(anyhow::anyhow!("Database is not inited"))?;
+    //     match self.server {
+    //         MusicServer::Kuwo => {
+    //             if let Err(e) = kuwo::model::Entity::delete_by_id(&self.indentity)
+    //                 .exec(&db)
+    //                 .await
+    //             {
+    //                 match e {
+    //                     sea_orm::DbErr::RecordNotFound(_) => {}
+    //                     other => return Err(anyhow::anyhow!("Failed to delete music: {}", other)),
+    //                 }
+    //             };
+    //         }
+    //         MusicServer::Netease => todo!(),
+    //         MusicServer::Database => todo!(),
+    //     }
+    //     Ok(())
+    // }
 }
 
-#[cfg(test)]
-mod test_music {
-    use sea_orm_migration::MigratorTrait;
+// #[cfg(test)]
+// mod test_music {
+//     use sea_orm_migration::MigratorTrait;
 
-    use crate::refactor::data::{
-        get_db, init_db,
-        interface::{music_aggregator::Music, MusicServer},
-        migrations::Migrator,
-    };
+//     use crate::refactor::data::{
+//         get_db, init_db,
+//         interface::{music_aggregator::Music, MusicServer},
+//         migrations::Migrator,
+//     };
 
-    async fn re_init_db() {
-        let db_file = "./test.db";
-        let path = std::path::Path::new(db_file);
-        if path.exists() {
-            std::fs::remove_file(path).unwrap();
-        }
-        std::fs::File::create(path).unwrap();
+//     async fn re_init_db() {
+//         let db_file = "./test.db";
+//         let path = std::path::Path::new(db_file);
+//         if path.exists() {
+//             std::fs::remove_file(path).unwrap();
+//         }
+//         std::fs::File::create(path).unwrap();
 
-        init_db(&("sqlite://".to_owned() + db_file)).await.unwrap();
-        Migrator::up(&get_db().await.unwrap(), None).await.unwrap();
-    }
+//         init_db(&("sqlite://".to_owned() + db_file)).await.unwrap();
+//         Migrator::up(&get_db().await.unwrap(), None).await.unwrap();
+//     }
 
-    #[tokio::test]
-    async fn test_all() {
-        re_init_db().await;
-        let musics = Music::search(vec![MusicServer::Kuwo], "Aimer".to_string(), 1, 30)
-            .await
-            .unwrap();
-        let len = musics.len();
-        println!("{:?}", musics);
-        let mut saved_musics = Vec::with_capacity(musics.len());
-        for music in musics {
-            let saved_music = music.save_to_db().await.unwrap();
-            saved_musics.push(saved_music);
-        }
-        println!("{:?}", saved_musics);
-        for saved_music in saved_musics {
-            saved_music.save_to_db().await.unwrap();
-        }
-        let musics = Music::get_from_db(vec![MusicServer::Kuwo]).await.unwrap();
-        assert!(musics.len() == len);
-        for music in musics {
-            music.del_from_db().await.unwrap();
-        }
-        assert!(
-            Music::get_from_db(vec![MusicServer::Kuwo])
-                .await
-                .unwrap()
-                .len()
-                == 0
-        );
-    }
-}
+//     #[tokio::test]
+//     async fn test_all() {
+//         re_init_db().await;
+//         let musics = Music::search(vec![MusicServer::Kuwo], "Aimer".to_string(), 1, 30)
+//             .await
+//             .unwrap();
+//         let len = musics.len();
+//         println!("{:?}", musics);
+//         let mut saved_musics = Vec::with_capacity(musics.len());
+//         for music in musics {
+//             let saved_music = music.save_to_db().await.unwrap();
+//             saved_musics.push(saved_music);
+//         }
+//         println!("{:?}", saved_musics);
+//         for saved_music in saved_musics {
+//             saved_music.save_to_db().await.unwrap();
+//         }
+//         let musics = Music::get_from_db(vec![MusicServer::Kuwo]).await.unwrap();
+//         assert!(musics.len() == len);
+//         for music in musics {
+//             music.del_from_db().await.unwrap();
+//         }
+//         assert!(
+//             Music::get_from_db(vec![MusicServer::Kuwo])
+//                 .await
+//                 .unwrap()
+//                 .len()
+//                 == 0
+//         );
+//     }
+// }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MusicAggregator {
@@ -188,7 +199,7 @@ pub struct MusicAggregator {
 impl MusicAggregator {
     /// identity是name和artist的组合, 是音乐聚合的唯一标识， 也是数据库中的主键
     pub fn identity(&self) -> String {
-        format!("{} {}", self.name, self.artist)
+        format!("{}#+#{}", self.name, self.artist)
     }
 
     /// 多个artist应该使用&连接
@@ -209,6 +220,36 @@ impl MusicAggregator {
             from_db: music.from_db,
             musics: vec![music],
         }
+    }
+
+    pub async fn find_in_db(name: String, artist: String) -> Option<Self> {
+        let db = get_db()
+            .await
+            .ok_or(anyhow::anyhow!("Database is not inited"))
+            .ok()?;
+        let identity = format!("{}#+#{}", name, artist);
+        let agg = music_aggregator::Entity::find_by_id(identity)
+            .one(&db)
+            .await
+            .ok()?;
+
+        if let Some(agg) = agg {
+            let mut vec = Vec::with_capacity(MusicServer::length());
+            // TODO: 完成其他server的查询
+            if let Some(model) = agg.find_related(kuwo::model::Entity).one(&db).await.ok()? {
+                vec.push(model.into());
+            }
+            if !vec.is_empty() {
+                return Some(MusicAggregator {
+                    name,
+                    artist,
+                    from_db: true,
+                    musics: vec,
+                });
+            }
+        }
+
+        None
     }
 
     /// 从数据库中获取MusicAggregator
@@ -240,11 +281,7 @@ impl MusicAggregator {
                 vec.push(model.into());
             }
             if !vec.is_empty() {
-                let (name, artist) = agg.identity.split_once(' ').ok_or(anyhow::anyhow!(
-                    "Failed to split name and artist from identity: {}",
-                    agg.identity
-                ))?;
-
+                let (name, artist) = split_string(agg.identity)?;
                 musics.push(MusicAggregator {
                     name: name.to_string(),
                     artist: artist.to_string(),
@@ -256,10 +293,7 @@ impl MusicAggregator {
         Ok(musics)
     }
 
-    /// 保存到数据库中(有则更新，无则插入)
-    /// 更新时仅考虑维护 junction table， 而不会修改music表中信息
-    /// 如需修改music表中信息， 请使用Music的save_to_db方法
-    pub async fn save_to_db(&self) -> Result<(), anyhow::Error> {
+    pub async fn insert_to_db(&self) -> Result<(), anyhow::Error> {
         let db = get_db()
             .await
             .ok_or(anyhow::anyhow!("Database is not inited"))?;
@@ -272,6 +306,7 @@ impl MusicAggregator {
             .find(|x| x.server == MusicServer::Kuwo)
             .and_then(|x| Some(x.indentity.clone()));
 
+        // 维护音乐聚合表
         // 如果有重复的id则更新
         if let Some(agg) = music_aggregator::Entity::find_by_id(self.identity())
             .one(&db)
@@ -290,8 +325,9 @@ impl MusicAggregator {
             music_aggregator::Entity::insert(agg).exec(&db).await?;
         }
 
+        // 维护分别的音乐表
         for music in &self.musics {
-            music.save_to_db().await?;
+            music.insert_to_db().await?;
         }
         Ok(())
     }
@@ -338,7 +374,7 @@ impl MusicAggregator {
         let mut success = false;
         if let Some(musics) = Music::search(servers, content, page, size).await.ok() {
             for music in musics {
-                let identity = format!("{} {}", music.name, music.artist);
+                let identity = format!("{}#+#{}", music.name, music.artist);
                 if let Some(pair) = map.get_mut(&identity) {
                     if !pair.1.musics.iter().any(|x| x.server == music.server) {
                         pair.1.musics.push(music);
@@ -442,7 +478,7 @@ mod test_music_aggregator {
         re_init_db().await;
         let aggs = do_search(vec![]).await;
         for agg in aggs {
-            agg.save_to_db().await.unwrap();
+            agg.insert_to_db().await.unwrap();
             println!("{:?}", agg);
         }
     }
@@ -452,11 +488,11 @@ mod test_music_aggregator {
         re_init_db().await;
         let aggs = do_search(vec![]).await;
         for agg in &aggs {
-            agg.save_to_db().await.unwrap();
+            agg.insert_to_db().await.unwrap();
         }
         let aggs = do_search(vec![]).await;
         for agg in aggs {
-            agg.save_to_db().await.unwrap();
+            agg.insert_to_db().await.unwrap();
             println!("{:?}", agg);
         }
     }
@@ -466,7 +502,7 @@ mod test_music_aggregator {
         re_init_db().await;
         let aggs = do_search(vec![]).await;
         for agg in &aggs {
-            agg.save_to_db().await.unwrap();
+            agg.insert_to_db().await.unwrap();
         }
 
         for agg in aggs {

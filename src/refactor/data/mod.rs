@@ -1,8 +1,6 @@
 pub mod interface;
 pub mod migrations;
 pub mod models;
-// 创建一个全局的数据库连接池，需要再main.rs中初始化
-// 需要可以 初始化和销毁
 
 use once_cell::sync::OnceCell;
 use sea_orm::{Database, DatabaseConnection};

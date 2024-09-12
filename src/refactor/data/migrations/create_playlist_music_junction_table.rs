@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use sea_orm_migration::{prelude::*, schema::integer};
+use sea_orm_migration::{prelude::*, schema::{integer, string}};
 
 use crate::refactor::data::models::{music_aggregator, playlist, playlist_music_junction::Column};
 
@@ -18,7 +18,7 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(PlaylistMusicJunctionTable::PlaylistMusicJunction)
                     .col(integer(Column::PlaylistId))
-                    .col(integer(Column::MusicAggregatorId))
+                    .col(string(Column::MusicAggregatorId))
                     .col(integer(Column::Order))
                     .primary_key(
                         Index::create()
