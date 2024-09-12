@@ -105,7 +105,7 @@ pub struct Album {
 impl Into<Playlist> for Album {
     fn into(self) -> Playlist {
         Playlist {
-            server: crate::refactor::data::interface::MusicServer::Kuwo,
+            server: Some(crate::refactor::data::interface::MusicServer::Kuwo),
             type_field: PlaylistType::Album,
             identity: self.id,
             name: self.name,
@@ -120,6 +120,7 @@ impl Into<Playlist> for Album {
                 None
             },
             subscription: None,
+            from_db: false,
         }
     }
 }

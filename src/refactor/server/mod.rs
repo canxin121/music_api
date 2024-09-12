@@ -1,4 +1,5 @@
 use anyhow::Result;
+use sea_orm::EntityTrait;
 use std::sync::Arc;
 use std::sync::LazyLock;
 
@@ -23,9 +24,12 @@ pub static CLIENT: LazyLock<ClientWithMiddleware> = LazyLock::new(|| {
 pub use kuwo::model::ActiveModel as KuwoMusicActiveModel;
 pub use kuwo::model::Model as KuwoMusicModel;
 
+use super::data::get_db;
 use super::data::interface::music_aggregator::Music;
+use super::data::interface::music_aggregator::MusicAggregator;
 use super::data::interface::playlist::Playlist;
 use super::data::interface::MusicServer;
+use super::data::models::playlist;
 
 impl Music {
     pub async fn search(
@@ -45,7 +49,10 @@ impl Music {
                         match kuwo::web_api::music::search_kuwo_musics(content.as_ref(), page, size)
                             .await
                         {
-                            Ok(musics) => musics.into_iter().map(|music| music.into()).collect(),
+                            Ok(musics) => musics
+                                .into_iter()
+                                .map(|music| music.into_music(false))
+                                .collect(),
                             Err(e) => {
                                 log::error!("Failed to search kuwo musics: {}", e);
                                 Vec::new()
@@ -54,7 +61,6 @@ impl Music {
                     }));
                 }
                 MusicServer::Netease => todo!(),
-                MusicServer::Database => todo!(),
             }
         }
         let mut musics = Vec::with_capacity(MusicServer::length());
@@ -79,11 +85,13 @@ impl Music {
                     limit,
                 )
                 .await?;
-                let musics = musics.into_iter().map(|music| music.into()).collect();
+                let musics = musics
+                    .into_iter()
+                    .map(|music| music.into_music(false))
+                    .collect();
                 Ok((album, musics))
             }
             MusicServer::Netease => todo!(),
-            MusicServer::Database => todo!(),
         }
     }
 }
@@ -129,7 +137,6 @@ impl Playlist {
                     }));
                 }
                 MusicServer::Netease => todo!(),
-                MusicServer::Database => todo!(),
             }
         }
         let mut playlists = Vec::with_capacity(MusicServer::length());
@@ -142,10 +149,14 @@ impl Playlist {
         Ok(playlists)
     }
 
-    pub async fn get_musics(&self, page: u32, size: u32) -> Result<Vec<Music>> {
+    pub async fn fetch_musics(&self, page: u32, size: u32) -> Result<Vec<MusicAggregator>> {
         // 返回的一定是单个server的音乐
         // 因此可以直接构建新的MusicAggregator
-        match self.server {
+        if self.from_db || self.server.is_none() {
+            return Err(anyhow::anyhow!("Cant't get music from db playlist"));
+        }
+
+        match self.server.as_ref().unwrap() {
             MusicServer::Kuwo => {
                 let kuwo_musics = kuwo::web_api::music_list::get_kuwo_musics_of_music_list(
                     &self.identity,
@@ -153,12 +164,34 @@ impl Playlist {
                     size,
                 )
                 .await?;
-                let kuwo_musics = kuwo_musics.into_iter().map(|music| music.into()).collect();
-                Ok(kuwo_musics)
+                let kuwo_musics: Vec<Music> = kuwo_musics
+                    .into_iter()
+                    .map(|music| music.into_music(false))
+                    .collect();
+
+                Ok(kuwo_musics
+                    .into_iter()
+                    .map(|music| MusicAggregator::from_music(music))
+                    .collect::<Vec<MusicAggregator>>())
             }
             MusicServer::Netease => todo!(),
-            MusicServer::Database => todo!(),
         }
+    }
+
+    pub async fn get_all_musics(&self) -> Result<Vec<MusicAggregator>> {
+        let mut musics = Vec::new();
+        let mut page = 1;
+
+        loop {
+            let mut new_musics = self.fetch_musics(page, 100).await?;
+            if new_musics.is_empty() {
+                break;
+            }
+            musics.append(&mut new_musics);
+            page += 1;
+        }
+
+        Ok(musics)
     }
 }
 
@@ -167,20 +200,32 @@ mod server_test {
     #[tokio::test]
     async fn test_search() {
         let playlists =
-            super::Playlist::search(vec![super::MusicServer::Kuwo], "周杰伦".to_string(), 1, 10)
+            super::Playlist::search(vec![super::MusicServer::Kuwo], "周杰伦".to_string(), 8, 10)
                 .await
                 .unwrap();
-        println!("{:?}", playlists);
+        assert!(playlists.len() <= 10 && playlists.len() > 0);
+
+        let playlists = super::Playlist::search(
+            vec![super::MusicServer::Kuwo],
+            "周杰伦".to_string(),
+            9999,
+            10,
+        )
+        .await
+        .unwrap();
+        assert!(playlists.len() == 0)
     }
+
     #[tokio::test]
     async fn test_get_musics() {
-        let playlist =
+        let playlists =
             super::Playlist::search(vec![super::MusicServer::Kuwo], "周杰伦".to_string(), 1, 10)
                 .await
-                .unwrap()
-                .pop()
                 .unwrap();
-        let musics = playlist.get_musics(1, 10).await.unwrap();
-        println!("{:?}", musics);
+        let playlist = playlists.first().unwrap();
+        let musics = playlist.fetch_musics(1, 10).await.unwrap();
+        assert!(musics.len() > 0 && musics.len() <= 10);
+        let musics = playlist.fetch_musics(999, 10).await.unwrap();
+        assert!(musics.len() == 0)
     }
 }

@@ -8,12 +8,10 @@ pub mod playlist;
 pub mod quality;
 pub mod utils;
 
-#[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum MusicServer {
     Kuwo,
     Netease,
-    #[default]
-    Database,
 }
 
 impl MusicServer {

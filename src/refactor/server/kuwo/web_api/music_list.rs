@@ -9,16 +9,8 @@ use crate::refactor::{
 
 use super::utils::{get_music_rid_pic, parse_qualities_minfo};
 
-pub fn gen_music_list_url(content: &str, page: u32, limit: u32) -> String {
-    format!("http://search.kuwo.cn/r.s?all={}&pn={}&rn={limit}&rformat=json&encoding=utf8&ver=mbox&vipver=MUSIC_8.7.7.0_BCS37&plat=pc&devid=28156413&ft=playlist&pay=0&needliveshow=0",encode(content),page-1)
-}
-
-pub fn gen_get_musics_url(playlist_id: &str, page: u32, limit: u32) -> String {
-    format!("http://nplserver.kuwo.cn/pl.svc?op=getlistinfo&pid={playlist_id}&pn={}&rn={limit}&encode=utf8&keyset=pl2012&identity=kuwo&pcmp4=1&vipver=MUSIC_9.0.5.0_W1&newver=1",page-1)
-}
-
 pub async fn search_kuwo_music_list(content: &str, page: u32, limit: u32) -> Result<Vec<Playlist>> {
-    let url = gen_music_list_url(content, page, limit);
+    let url = format!("http://search.kuwo.cn/r.s?all={}&pn={}&rn={limit}&rformat=json&encoding=utf8&ver=mbox&vipver=MUSIC_8.7.7.0_BCS37&plat=pc&devid=28156413&ft=playlist&pay=0&needliveshow=0",encode(content),page-1);
     let text = CLIENT
         .get(&url)
         .send()
@@ -38,7 +30,7 @@ pub async fn get_kuwo_musics_of_music_list(
     page: u32,
     limit: u32,
 ) -> Result<Vec<KuwoMusicModel>> {
-    let url = gen_get_musics_url(playlist_id, page, limit);
+    let url = format!("http://nplserver.kuwo.cn/pl.svc?op=getlistinfo&pid={playlist_id}&pn={}&rn={limit}&encode=utf8&keyset=pl2012&identity=kuwo&pcmp4=1&vipver=MUSIC_9.0.5.0_W1&newver=1",page-1);
 
     let mut musiclist: GetMusicListResult = CLIENT.get(url).send().await?.json().await?;
     let mut handles = Vec::with_capacity(musiclist.musiclist.len());
@@ -111,7 +103,7 @@ pub struct SearchMusicList {
 impl Into<Playlist> for SearchMusicList {
     fn into(self) -> Playlist {
         Playlist {
-            server: crate::refactor::data::interface::MusicServer::Kuwo,
+            server: Some(crate::refactor::data::interface::MusicServer::Kuwo),
             type_field: crate::refactor::data::interface::playlist::PlaylistType::UserPlaylist,
             identity: self.playlistid,
             name: self.name,
@@ -122,6 +114,7 @@ impl Into<Playlist> for SearchMusicList {
             play_time: self.playcnt.parse().ok(),
             music_num: self.songnum.parse().ok(),
             subscription: None,
+            from_db: false,
         }
     }
 }

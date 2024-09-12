@@ -76,10 +76,9 @@ impl Music {
                 active.cover = Set(self.cover.clone());
 
                 let model = kuwo::model::Entity::update(active).exec(&db).await?;
-                return Ok(model.into());
+                return Ok(model.into_music(true));
             }
             MusicServer::Netease => todo!(),
-            MusicServer::Database => todo!(),
         }
     }
 
@@ -103,9 +102,6 @@ impl Music {
                 return Ok(());
             }
             MusicServer::Netease => todo!(),
-            MusicServer::Database => {
-                return Err(anyhow::anyhow!("Music from db, can't insert"));
-            }
         }
     }
 
@@ -202,18 +198,8 @@ impl MusicAggregator {
         format!("{}#+#{}", self.name, self.artist)
     }
 
-    /// 多个artist应该使用&连接
-    pub async fn new(name: String, artist: String) -> Self {
-        MusicAggregator {
-            name,
-            artist,
-            from_db: false,
-            musics: Vec::new(),
-        }
-    }
-
     /// 从一个Music创建一个MusicAggregator
-    pub async fn from_music(music: Music) -> Self {
+    pub fn from_music(music: Music) -> Self {
         MusicAggregator {
             name: music.name.clone(),
             artist: music.artist.clone(),
@@ -234,66 +220,19 @@ impl MusicAggregator {
             .ok()?;
 
         if let Some(agg) = agg {
-            let mut vec = Vec::with_capacity(MusicServer::length());
-            // TODO: 完成其他server的查询
-            if let Some(model) = agg.find_related(kuwo::model::Entity).one(&db).await.ok()? {
-                vec.push(model.into());
-            }
-            if !vec.is_empty() {
-                return Some(MusicAggregator {
-                    name,
-                    artist,
-                    from_db: true,
-                    musics: vec,
-                });
-            }
-        }
-
-        None
-    }
-
-    /// 从数据库中获取MusicAggregator
-    pub async fn get_from_db(playlist_id: Option<i64>) -> Result<Vec<Self>, anyhow::Error> {
-        let db = get_db()
-            .await
-            .ok_or(anyhow::anyhow!("Database is not inited"))?;
-        let aggs;
-        if let Some(playlist_id) = playlist_id {
-            let playlist = playlist::Entity::find_by_id(playlist_id)
-                .one(&db)
-                .await?
-                .ok_or(anyhow::anyhow!("Playlist not found"))?;
-
-            aggs = playlist
-                .find_related(music_aggregator::Entity)
-                .all(&db)
-                .await?;
+            agg.get_music_aggregator(db).await.ok()
         } else {
-            aggs = music_aggregator::Entity::find().all(&db).await?;
+            None
         }
-
-        let mut musics: Vec<MusicAggregator> = Vec::with_capacity(aggs.len());
-
-        for agg in aggs {
-            let mut vec = Vec::with_capacity(MusicServer::length());
-            /// TODO: 完成其他server的查询
-            if let Some(model) = agg.find_related(kuwo::model::Entity).one(&db).await? {
-                vec.push(model.into());
-            }
-            if !vec.is_empty() {
-                let (name, artist) = split_string(agg.identity)?;
-                musics.push(MusicAggregator {
-                    name: name.to_string(),
-                    artist: artist.to_string(),
-                    from_db: true,
-                    musics: vec,
-                });
-            }
-        }
-        Ok(musics)
     }
 
     pub async fn insert_to_db(&self) -> Result<(), anyhow::Error> {
+        if self.from_db {
+            return Err(anyhow::anyhow!(
+                "Can't insert music aggregator from db into db."
+            ));
+        }
+
         let db = get_db()
             .await
             .ok_or(anyhow::anyhow!("Database is not inited"))?;
@@ -334,6 +273,10 @@ impl MusicAggregator {
 
     /// 从数据库中删除
     pub async fn del_from_db(&self) -> Result<(), anyhow::Error> {
+        if !self.from_db {
+            return Err(anyhow::anyhow!("Can't del non-database music aggregator"));
+        }
+
         let db = get_db()
             .await
             .ok_or(anyhow::anyhow!("Database is not inited"))?;
@@ -512,7 +455,12 @@ mod test_music_aggregator {
 
     #[tokio::test]
     pub async fn test_fetch() {
-        let agg = MusicAggregator::new("Lemon".to_string(), "米津玄師".to_string()).await;
+        let agg = MusicAggregator {
+            name: "Lemon".to_string(),
+            artist: "米津玄師".to_string(),
+            from_db: false,
+            musics: vec![],
+        };
         let servers = vec![MusicServer::Kuwo];
         let agg = agg.fetch_server(servers).await.unwrap();
         println!("{:?}", agg);

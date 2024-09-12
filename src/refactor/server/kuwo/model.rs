@@ -4,6 +4,7 @@ use crate::refactor::data::{
 };
 use anyhow::Result;
 use sea_orm::entity::prelude::*;
+use sea_query::Mode;
 
 use super::web_api::get_kuwo_lyric;
 
@@ -32,10 +33,10 @@ impl Model {
     }
 }
 
-impl Into<Music> for Model {
-    fn into(self) -> Music {
+impl Model {
+    pub fn into_music(self, from_db: bool) -> Music {
         Music {
-            from_db: false,
+            from_db,
             server: crate::refactor::data::interface::MusicServer::Kuwo,
             indentity: self.music_id,
             duration: self.duration,
