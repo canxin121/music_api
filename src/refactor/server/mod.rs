@@ -1,5 +1,4 @@
 use anyhow::Result;
-use sea_orm::EntityTrait;
 use std::sync::Arc;
 use std::sync::LazyLock;
 
@@ -24,12 +23,10 @@ pub static CLIENT: LazyLock<ClientWithMiddleware> = LazyLock::new(|| {
 pub use kuwo::model::ActiveModel as KuwoMusicActiveModel;
 pub use kuwo::model::Model as KuwoMusicModel;
 
-use super::data::get_db;
 use super::data::interface::music_aggregator::Music;
 use super::data::interface::music_aggregator::MusicAggregator;
 use super::data::interface::playlist::Playlist;
 use super::data::interface::MusicServer;
-use super::data::models::playlist;
 
 impl Music {
     pub async fn search(
@@ -155,7 +152,7 @@ impl Playlist {
         if self.from_db || self.server.is_none() {
             return Err(anyhow::anyhow!("Cant't get music from db playlist"));
         }
-
+        
         match self.server.as_ref().unwrap() {
             MusicServer::Kuwo => {
                 let kuwo_musics = kuwo::web_api::music_list::get_kuwo_musics_of_music_list(

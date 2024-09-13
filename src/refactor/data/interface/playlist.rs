@@ -48,7 +48,7 @@ pub struct Playlist {
 impl From<playlist::Model> for Playlist {
     fn from(value: playlist::Model) -> Self {
         Self {
-            from_db: false,
+            from_db: true,
             server: None,
             type_field: PlaylistType::UserPlaylist,
             identity: value.id.to_string(),
@@ -90,7 +90,7 @@ impl Playlist {
 
     pub async fn find_in_db(id: i64) -> Option<Self> {
         let db = get_db().await.expect("Database is not inited.");
-        let model = playlist::Entity::find_by_id(id)
+        let model: Option<playlist::Model> = playlist::Entity::find_by_id(id)
             .one(&db)
             .await
             .expect("Failed to find playlist by id.");
@@ -197,20 +197,22 @@ impl Playlist {
                 .count(&db)
                 .await?;
         let mut order = count as i64;
-
+        let mut junctions = Vec::with_capacity(music_aggs.len());
+        
         for music_agg in music_aggs {
             music_agg.insert_to_db().await?;
-
             let junction = playlist_music_junction::ActiveModel::new(
                 self.identity.parse::<i64>()?,
                 music_agg.identity(),
                 order,
             );
-            playlist_music_junction::Entity::insert(junction)
-                .exec(&db)
-                .await?;
             order += 1;
+            junctions.push(junction);
         }
+        playlist_music_junction::Entity::insert_many(junctions)
+            .on_conflict_do_nothing()
+            .exec(&db)
+            .await?;
         Ok(())
     }
 
