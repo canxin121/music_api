@@ -3,6 +3,7 @@ pub mod info;
 pub mod lyric;
 pub mod music;
 pub mod music_list;
+pub mod share_music_list;
 pub mod utils;
 
 pub use album::get_kuwo_music_album;

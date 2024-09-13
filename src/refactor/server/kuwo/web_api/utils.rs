@@ -69,6 +69,22 @@ pub async fn get_music_rid_pic(music_rid: &str) -> Result<String, anyhow::Error>
     Ok(text)
 }
 
+pub fn find_id_from_share_url(url: &str) -> Option<String> {
+    // 查找路径中的playlist_detail部分
+    if let Some(start) = url.find("playlist_detail/") {
+        // 提取ID部分，ID在playlist_detail/后面
+        let id_part = &url[start + "playlist_detail/".len()..];
+
+        // 检查ID是否在路径中结束或者继续有查询字符串
+        if let Some(end) = id_part.find('?') {
+            return Some(id_part[..end].to_string());
+        } else {
+            return Some(id_part.to_string());
+        }
+    }
+    None
+}
+
 // pub fn build_web_albumpic_short(web_albumpic_short: &str) -> Option<String> {
 //     if web_albumpic_short.is_empty() {
 //         None

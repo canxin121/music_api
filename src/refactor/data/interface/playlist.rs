@@ -18,16 +18,10 @@ use super::{music_aggregator::MusicAggregator, MusicServer};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PlaylistType {
-    // 用户自己创建的歌单(来自平台或数据库)
     UserPlaylist,
-    // 专辑
     Album,
 }
 
-/// 歌单
-/// 一个歌单可以是用户自己创建的(数据库中)， 也可以是来自其他平台(在线歌单)
-/// 使用 `server` 字段来区分
-/// 特殊的， 如果是新建一个数据库歌单， `identity` 字段为空， 此时save将插入数据库
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Playlist {
     pub from_db: bool,
@@ -65,7 +59,6 @@ impl From<playlist::Model> for Playlist {
 }
 
 impl Playlist {
-    /// 创建一个新的歌单， 但是不会保存到数据库
     pub fn new(
         name: String,
         summary: Option<String>,
@@ -88,6 +81,7 @@ impl Playlist {
         }
     }
 
+    /// find db playlist by primary key `id`
     pub async fn find_in_db(id: i64) -> Option<Self> {
         let db = get_db().await.expect("Database is not inited.");
         let model: Option<playlist::Model> = playlist::Entity::find_by_id(id)
@@ -97,6 +91,7 @@ impl Playlist {
         model.and_then(|m| Some(m.into()))
     }
 
+    /// update db playlist info
     pub async fn update_to_db(&self) -> Result<Self> {
         if !self.from_db || self.identity.is_empty() {
             return Err(anyhow::anyhow!(
@@ -107,7 +102,6 @@ impl Playlist {
             .await
             .ok_or(anyhow::anyhow!("Database is not inited."))?;
 
-        // 如果是数据库歌单， 且有id， 则更新数据库中的歌单
         if let Ok(id) = self.identity.parse::<i64>() {
             let playlist = playlist::ActiveModel {
                 id: Set(id),
@@ -238,7 +232,7 @@ impl Playlist {
             .await?;
         let mut aggs = Vec::with_capacity(aggs_links.len());
         for agg_link in aggs_links {
-            aggs.push(agg_link.get_music_aggregator(db.clone()).await?)
+            aggs.push(agg_link.get_music_aggregator(&db).await?)
         }
         Ok(aggs)
     }
@@ -249,7 +243,7 @@ mod test_playlist {
     use sea_orm_migration::MigratorTrait as _;
     use serial_test::serial;
 
-    use crate::refactor::data::{close_db, migrations::Migrator, set_db};
+    use crate::refactor::data::{migrations::Migrator, set_db};
 
     use super::*;
     async fn re_init_db() {
@@ -348,5 +342,22 @@ mod test_playlist {
         let start = std::time::Instant::now();
         playlist.add_aggs_to_db(&aggs).await.unwrap();
         println!("Add aggs to db cost: {:?}", start.elapsed());
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_get_musics_from_db() {
+        re_init_db().await;
+        let playlists = Playlist::search(vec![MusicServer::Kuwo], "Aimer".to_string(), 1, 30);
+        let playlist = playlists.await.unwrap().into_iter().next().unwrap();
+        let aggs = playlist.fetch_musics(1, 30).await.unwrap();
+
+        let insert_id = playlist.insert_to_db().await.unwrap();
+        let playlist = Playlist::find_in_db(insert_id).await.unwrap();
+        playlist.add_aggs_to_db(&aggs).await.unwrap();
+
+        let music_aggs = playlist.get_musics_from_db().await.unwrap();
+        println!("{:?}", music_aggs);
+        println!("Length: {}", music_aggs.len());
     }
 }

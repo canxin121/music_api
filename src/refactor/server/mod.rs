@@ -1,4 +1,5 @@
 use anyhow::Result;
+use kuwo::web_api::share_music_list::get_kuwo_music_list_from_share;
 use std::sync::Arc;
 use std::sync::LazyLock;
 
@@ -67,8 +68,9 @@ impl Music {
         Ok(musics)
     }
 
-    // 由于专辑歌曲较少，有的平台不分页，因此第一次就返回 第一页 的歌曲(可能就是全部)
-    pub async fn get_album(&self, page: u32, limit: u32) -> Result<(Option<Playlist>, Vec<Music>)> {
+    // 由于专辑歌曲较少，有的平台不分页，因此第一次就返回所有的歌曲(可能就是全部)
+    // Playlist仅在第一页返回
+    pub async fn get_album(&self, page: u16, limit: u16) -> Result<(Option<Playlist>, Vec<Music>)> {
         match self.server {
             MusicServer::Kuwo => {
                 let (album, musics) = kuwo::web_api::album::get_kuwo_music_album(
@@ -106,63 +108,6 @@ mod server_music_test {
         println!("{:?}", musics);
     }
 }
-
-pub async fn fetch_musics(
-    server: &MusicServer,
-    identity: &str,
-    page: u32,
-    size: u32,
-) -> Result<Vec<MusicAggregator>> {
-    match server {
-        MusicServer::Kuwo => {
-            let kuwo_musics =
-                kuwo::web_api::music_list::get_kuwo_musics_of_music_list(identity, page, size)
-                    .await?;
-            let kuwo_musics: Vec<Music> = kuwo_musics
-                .into_iter()
-                .map(|music| music.into_music(false))
-                .collect();
-
-            Ok(kuwo_musics
-                .into_iter()
-                .map(|music| MusicAggregator::from_music(music))
-                .collect::<Vec<MusicAggregator>>())
-        }
-        MusicServer::Netease => todo!(),
-    }
-}
-
-// async fn fetch_musics_retry(
-//     server: &MusicServer,
-//     identity: &str,
-//     page: u32,
-//     size: u32,
-//     retries: usize,
-// ) -> Result<Vec<MusicAggregator>> {
-//     for attempt in 0..=retries {
-//         match fetch_musics(server, identity, page, size).await {
-//             Ok(musics) => return Ok(musics),
-//             Err(e) if attempt < retries => {
-//                 eprintln!("Retrying page {} due to error: {:?}", page, e);
-//             }
-//             Err(e) => return Err(e),
-//         }
-//     }
-//     Err(anyhow::anyhow!("Failed after {} retries", retries))
-// }
-
-// async fn fetch_musics_concurrent(
-//     server: Arc<MusicServer>,
-//     identity: Arc<String>,
-//     page: u32,
-//     size: u32,
-//     semaphore: Arc<Semaphore>,
-//     retries: usize,
-// ) -> Result<Vec<MusicAggregator>> {
-//     // Acquire the semaphore to limit concurrent requests
-//     let _permit = semaphore.acquire().await.unwrap();
-//     fetch_musics_retry(&server, &identity, page, size, retries).await
-// }
 
 impl Playlist {
     pub async fn search(
@@ -203,7 +148,15 @@ impl Playlist {
         Ok(playlists)
     }
 
-    pub async fn fetch_musics(&self, page: u32, size: u32) -> Result<Vec<MusicAggregator>> {
+    pub async fn from_share(share: &str) -> Result<Self> {
+        if share.contains("kuwo") {
+            get_kuwo_music_list_from_share(share).await
+        } else {
+            Err(anyhow::anyhow!("Unsupport share content."))
+        }
+    }
+
+    pub async fn fetch_musics(&self, page: u16, limit: u16) -> Result<Vec<MusicAggregator>> {
         // 返回的一定是单个server的音乐
         // 因此可以直接构建新的MusicAggregator
         if self.from_db || self.server.is_none() {
@@ -213,7 +166,47 @@ impl Playlist {
         let server = self.server.as_ref().ok_or(anyhow::anyhow!(
             "This music is not from db, but has no server."
         ))?;
-        fetch_musics(server, self.identity.as_str(), page, size).await
+        match server {
+            MusicServer::Kuwo => match self.type_field {
+                super::data::interface::playlist::PlaylistType::UserPlaylist => {
+                    let kuwo_musics = kuwo::web_api::music_list::get_kuwo_musics_of_music_list(
+                        &self.identity,
+                        page,
+                        limit,
+                    )
+                    .await?;
+                    let kuwo_musics: Vec<Music> = kuwo_musics
+                        .into_iter()
+                        .map(|music| music.into_music(false))
+                        .collect();
+
+                    Ok(kuwo_musics
+                        .into_iter()
+                        .map(|music| MusicAggregator::from_music(music))
+                        .collect::<Vec<MusicAggregator>>())
+                }
+                super::data::interface::playlist::PlaylistType::Album => {
+                    let (_playlist, kuwo_musics) = kuwo::web_api::album::get_kuwo_music_album(
+                        &self.identity,
+                        &self.name,
+                        page,
+                        limit,
+                    )
+                    .await?;
+
+                    let kuwo_musics: Vec<Music> = kuwo_musics
+                        .into_iter()
+                        .map(|music| music.into_music(false))
+                        .collect();
+
+                    Ok(kuwo_musics
+                        .into_iter()
+                        .map(|music| MusicAggregator::from_music(music))
+                        .collect::<Vec<MusicAggregator>>())
+                }
+            },
+            MusicServer::Netease => todo!(),
+        }
     }
 
     // pub async fn fetch_all_musics(&self) -> Result<Vec<MusicAggregator>> {
@@ -258,6 +251,8 @@ impl Playlist {
 
 #[cfg(test)]
 mod server_test {
+    use crate::refactor::data::interface::playlist::Playlist;
+
     #[tokio::test]
     async fn test_search() {
         let playlists =
@@ -304,5 +299,15 @@ mod server_test {
         println!("Time: {:?}", start.elapsed());
         println!("Length: {}", musics.len());
         assert!(musics.len() > 0);
+    }
+
+    #[tokio::test]
+    async fn test_from_share() {
+        let playlist = Playlist::from_share(
+            "https://m.kuwo.cn/newh5app/playlist_detail/1312045587?from=ip&t=qqfriend",
+        )
+        .await
+        .unwrap();
+        println!("{:#?}", playlist);
     }
 }

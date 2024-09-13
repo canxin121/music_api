@@ -204,6 +204,18 @@ impl MusicAggregator {
         }
     }
 
+    pub async fn get_from_db() -> Result<Vec<Self>, anyhow::Error> {
+        let db = get_db()
+            .await
+            .ok_or(anyhow::anyhow!("Database is not inited"))?;
+        let aggs = music_aggregator::Entity::find().all(&db).await?;
+        let mut result = Vec::new();
+        for agg in aggs {
+            result.push(agg.get_music_aggregator(&db).await?);
+        }
+        Ok(result)
+    }
+
     pub async fn find_in_db(name: String, artist: String) -> Option<Self> {
         let db = get_db()
             .await
@@ -216,7 +228,7 @@ impl MusicAggregator {
             .ok()?;
 
         if let Some(agg) = agg {
-            agg.get_music_aggregator(db).await.ok()
+            agg.get_music_aggregator(&db).await.ok()
         } else {
             None
         }
@@ -384,11 +396,13 @@ impl MusicAggregator {
 #[cfg(test)]
 mod test_music_aggregator {
     use sea_orm_migration::MigratorTrait as _;
+    use serial_test::serial;
 
     use crate::refactor::data::{
-        get_db, set_db,
+        get_db,
         interface::{music_aggregator::MusicAggregator, MusicServer},
         migrations::Migrator,
+        set_db,
     };
 
     async fn re_init_db() {
@@ -415,6 +429,7 @@ mod test_music_aggregator {
     }
 
     #[tokio::test]
+    #[serial]
     pub async fn test_save() {
         re_init_db().await;
         let aggs = do_search(vec![]).await;
@@ -425,6 +440,7 @@ mod test_music_aggregator {
     }
 
     #[tokio::test]
+    #[serial]
     pub async fn test_save_muti() {
         re_init_db().await;
         let aggs = do_search(vec![]).await;
@@ -439,19 +455,39 @@ mod test_music_aggregator {
     }
 
     #[tokio::test]
-    pub async fn test_del() {
+    #[serial]
+    pub async fn test_get() {
+        let _ = tracing_subscriber::fmt::try_init();
         re_init_db().await;
         let aggs = do_search(vec![]).await;
         for agg in &aggs {
             agg.insert_to_db().await.unwrap();
         }
 
-        for agg in aggs {
+        let inserted_agg = MusicAggregator::get_from_db().await.unwrap();
+        for agg in inserted_agg {
+            println!("{:?}", agg);
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
+    pub async fn test_del() {
+        let _ = tracing_subscriber::fmt::try_init();
+        re_init_db().await;
+        let aggs = do_search(vec![]).await;
+        for agg in &aggs {
+            agg.insert_to_db().await.unwrap();
+        }
+
+        let inserted_agg = MusicAggregator::get_from_db().await.unwrap();
+        for agg in inserted_agg {
             agg.del_from_db().await.unwrap();
         }
     }
 
     #[tokio::test]
+    #[serial]
     pub async fn test_fetch() {
         let agg = MusicAggregator {
             name: "Lemon".to_string(),

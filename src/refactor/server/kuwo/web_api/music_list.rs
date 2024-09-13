@@ -7,7 +7,7 @@ use crate::refactor::{
     server::{KuwoMusicModel, CLIENT},
 };
 
-use super::utils::{get_music_rid_pic, parse_qualities_minfo};
+use super::utils::{find_id_from_share_url, get_music_rid_pic, parse_qualities_minfo};
 
 pub async fn search_kuwo_music_list(content: &str, page: u32, limit: u32) -> Result<Vec<Playlist>> {
     let url = format!("http://search.kuwo.cn/r.s?all={}&pn={}&rn={limit}&rformat=json&encoding=utf8&ver=mbox&vipver=MUSIC_8.7.7.0_BCS37&plat=pc&devid=28156413&ft=playlist&pay=0&needliveshow=0",encode(content),page-1);
@@ -27,8 +27,8 @@ pub async fn search_kuwo_music_list(content: &str, page: u32, limit: u32) -> Res
 
 pub async fn get_kuwo_musics_of_music_list(
     playlist_id: &str,
-    page: u32,
-    limit: u32,
+    page: u16,
+    limit: u16,
 ) -> Result<Vec<KuwoMusicModel>> {
     let url = format!("http://nplserver.kuwo.cn/pl.svc?op=getlistinfo&pid={playlist_id}&pn={}&rn={limit}&encode=utf8&keyset=pl2012&identity=kuwo&pcmp4=1&vipver=MUSIC_9.0.5.0_W1&newver=1",page-1);
 

@@ -11,8 +11,8 @@ use super::utils::get_music_rid_pic;
 pub async fn get_kuwo_music_album(
     album_id: &str,
     album_name: &str,
-    page: u32,
-    limit: u32,
+    page: u16,
+    limit: u16,
 ) -> Result<(Option<Playlist>, Vec<KuwoMusicModel>)> {
     if page == 0 {
         return Err(anyhow::anyhow!("Page must be more than or equal 1."));

@@ -18,7 +18,7 @@ pub struct Model {
 pub enum Relation {
     PlaylistMusicJunction,
     KuwoMusic,
-    // NeteaseMusicId,
+    // NeteaseMusicId,  
 }
 
 impl RelationTrait for Relation {
@@ -45,13 +45,17 @@ impl RelationTrait for Relation {
 impl Model {
     pub async fn get_music_aggregator(
         &self,
-        db: DatabaseConnection,
+        db: &DatabaseConnection,
     ) -> anyhow::Result<MusicAggregator> {
         let (name, artist) = split_string(&self.identity)?;
-        let kuwo_musics = self.find_related(kuwo::model::Entity).one(&db).await?;
         let mut musics = Vec::with_capacity(MusicServer::length());
-        if let Some(kuwo_music) = kuwo_musics {
-            musics.push(kuwo_music.into_music(true));
+
+        if let Some(id) = self.kuwo_music_id.as_ref() {
+            let kuwo_music = kuwo::model::Entity::find_by_id(id).one(db).await?;
+
+            if let Some(kuwo_music) = kuwo_music {
+                musics.push(kuwo_music.into_music(true));
+            }
         }
         let agg = MusicAggregator {
             name,
