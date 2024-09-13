@@ -9,14 +9,10 @@ use tokio::sync::RwLock;
 
 static DB_POOL: OnceCell<Arc<RwLock<Option<DatabaseConnection>>>> = OnceCell::new();
 
-pub async fn init_db(database_url: &str) -> Result<(), anyhow::Error> {
+pub async fn set_db(database_url: &str) -> Result<(), anyhow::Error> {
     let db = Database::connect(database_url).await?;
     let connection = Arc::new(RwLock::new(Some(db)));
-
-    DB_POOL
-        .set(connection)
-        .map_err(|_| sea_orm::DbErr::Custom("Failed to set global connection".into()))?;
-
+    let _ = DB_POOL.set(connection);
     Ok(())
 }
 

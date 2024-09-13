@@ -1,21 +1,14 @@
-use std::{borrow::Cow, collections::HashMap, f32::consts::E};
+use std::collections::HashMap;
 
-use sea_orm::{EntityTrait, IntoActiveModel as _, ModelTrait, Set, Unchanged};
+use sea_orm::{EntityTrait, IntoActiveModel as _, Set};
 use serde::{Deserialize, Serialize};
 
 use crate::refactor::{
-    data::{
-        get_db,
-        models::{music_aggregator, playlist},
-    },
+    data::{get_db, models::music_aggregator},
     server::kuwo,
 };
 
-use super::{
-    quality::QualityVec,
-    utils::{is_artist_equal, split_string},
-    MusicServer,
-};
+use super::{quality::QualityVec, utils::is_artist_equal, MusicServer};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Music {
@@ -229,55 +222,6 @@ impl MusicAggregator {
         }
     }
 
-    pub async fn insert_many_to_db(aggs: Vec<Self>) -> Result<(), anyhow::Error> {
-        // 判断第一个是否来自数据库
-        let from_db = aggs.first().map(|x| x.from_db).unwrap_or(false);
-        if from_db {
-            return Err(anyhow::anyhow!("Can't insert from db music aggregator"));
-        }
-        let db = get_db()
-            .await
-            .ok_or(anyhow::anyhow!("Database is not inited"))?;
-        let mut update_actives = Vec::with_capacity(aggs.len() / 2);
-        let mut insert_actives = Vec::with_capacity(aggs.len() / 2);
-
-        // 分别 构建 update 和 insert 的 active model
-        for agg in aggs {
-            let kuwo_id = agg
-                .musics
-                .iter()
-                .find(|x| x.server == MusicServer::Kuwo)
-                .and_then(|x| Some(x.indentity.clone()));
-
-            if let Some(agg) = music_aggregator::Entity::find_by_id(agg.identity())
-                .one(&db)
-                .await?
-            {
-                let mut active = agg.into_active_model();
-                active.kuwo_music_id = Set(kuwo_id);
-                update_actives.push(active);
-            } else {
-                let agg = music_aggregator::ActiveModel {
-                    identity: Set(agg.identity()),
-                    kuwo_music_id: Set(kuwo_id),
-                    netease_music_id: Set(None),
-                };
-                insert_actives.push(agg);
-            }
-        }
-
-        // 批量插入
-        music_aggregator::Entity::insert_many(insert_actives)
-            .on_conflict_do_nothing()
-            .exec(&db)
-            .await?;
-
-        // 批量更新
-        music_aggregator::Entity::update_many().exec(&db).await?;
-
-        Ok(())
-    }
-
     pub async fn insert_to_db(&self) -> Result<(), anyhow::Error> {
         if self.from_db {
             return Err(anyhow::anyhow!(
@@ -290,7 +234,6 @@ impl MusicAggregator {
             .ok_or(anyhow::anyhow!("Database is not inited"))?;
         // 先保存音乐
 
-        /// TODO: 完成其他server的id的保存
         let kuwo_id = self
             .musics
             .iter()
@@ -443,7 +386,7 @@ mod test_music_aggregator {
     use sea_orm_migration::MigratorTrait as _;
 
     use crate::refactor::data::{
-        get_db, init_db,
+        get_db, set_db,
         interface::{music_aggregator::MusicAggregator, MusicServer},
         migrations::Migrator,
     };
@@ -456,7 +399,7 @@ mod test_music_aggregator {
         }
         std::fs::File::create(path).unwrap();
 
-        init_db(&("sqlite://".to_owned() + db_file)).await.unwrap();
+        set_db(&("sqlite://".to_owned() + db_file)).await.unwrap();
         Migrator::up(&get_db().await.unwrap(), None).await.unwrap();
     }
 

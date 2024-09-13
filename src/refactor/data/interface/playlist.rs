@@ -198,7 +198,7 @@ impl Playlist {
                 .await?;
         let mut order = count as i64;
         let mut junctions = Vec::with_capacity(music_aggs.len());
-        
+
         for music_agg in music_aggs {
             music_agg.insert_to_db().await?;
             let junction = playlist_music_junction::ActiveModel::new(
@@ -247,13 +247,14 @@ impl Playlist {
 #[cfg(test)]
 mod test_playlist {
     use sea_orm_migration::MigratorTrait as _;
+    use serial_test::serial;
 
-    use crate::refactor::data::{init_db, migrations::Migrator};
+    use crate::refactor::data::{close_db, migrations::Migrator, set_db};
 
     use super::*;
     async fn re_init_db() {
         // 初始化log
-        tracing_subscriber::fmt::init();
+        // tracing_subscriber::fmt::init();
 
         let db_file = "./test.db";
         let path = std::path::Path::new(db_file);
@@ -262,12 +263,13 @@ mod test_playlist {
         }
         std::fs::File::create(path).unwrap();
 
-        init_db(&("sqlite://".to_owned() + db_file)).await.unwrap();
+        set_db(&("sqlite://".to_owned() + db_file)).await.unwrap();
         Migrator::up(&get_db().await.unwrap(), None).await.unwrap();
     }
 
     #[tokio::test]
-    async fn test_save_to_db() {
+    #[serial]
+    async fn test_insert_to_db() {
         re_init_db().await;
         let playlist = Playlist::new(
             "test".to_string(),
@@ -282,6 +284,7 @@ mod test_playlist {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_del_from_db() {
         re_init_db().await;
         let playlist = Playlist::new(
@@ -304,6 +307,7 @@ mod test_playlist {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_add_aggs_to_db1() {
         re_init_db().await;
         let playlist = Playlist::new(
@@ -331,6 +335,7 @@ mod test_playlist {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_add_aggs_to_db2() {
         re_init_db().await;
         let playlists = Playlist::search(vec![MusicServer::Kuwo], "Aimer".to_string(), 1, 30);

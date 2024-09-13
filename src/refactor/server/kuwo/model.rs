@@ -4,7 +4,6 @@ use crate::refactor::data::{
 };
 use anyhow::Result;
 use sea_orm::entity::prelude::*;
-use sea_query::Mode;
 
 use super::web_api::get_kuwo_lyric;
 

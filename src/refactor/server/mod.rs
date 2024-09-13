@@ -1,8 +1,6 @@
 use anyhow::Result;
-use futures::future::join_all;
 use std::sync::Arc;
 use std::sync::LazyLock;
-use tokio::sync::Semaphore;
 
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
@@ -299,14 +297,6 @@ mod server_test {
                 .await
                 .unwrap();
         let playlist = playlists.first().unwrap();
-        // let start = std::time::Instant::now();
-        // let musics = playlist.fetch_all_musics().await.unwrap();
-
-        // println!("{:?}", musics);
-        // println!("Time: {:?}", start.elapsed());
-        // println!("Length: {}", musics.len());
-        // assert!(musics.len() > 0);
-
         let start = std::time::Instant::now();
         let musics = playlist.fetch_musics(1, 999).await.unwrap();
 
