@@ -54,7 +54,6 @@ mod orm_test {
         let album_active = album.save(db).await.unwrap();
 
         let music1_model = MusicAggregatorModel::default();
-        println!("{:?}", music1_model);
 
         let mut music1_active = music1_model.into_active_model();
         music1_active.identity = NotSet;

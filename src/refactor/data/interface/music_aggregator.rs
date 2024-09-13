@@ -102,24 +102,6 @@ impl Music {
                     .on_conflict_do_nothing()
                     .exec(&db)
                     .await?;
-                // match kuwo::model::Entity::insert(active).on_conflict_do_nothing().exec(&db).await {
-                //     Ok(_) => {}
-                //     Err(e) => match e {
-                //         sea_orm::DbErr::Exec(e) => match e {
-                //             sea_orm::RuntimeErr::SqlxError(e) => match e {
-                //                 sea_orm::SqlxError::Database(e) => {
-                //                     // 重复插入问题直接忽略
-                //                     if !(e.code() == Some(Cow::Borrowed("1555"))) {
-                //                         return Err(anyhow::anyhow!(e));
-                //                     }
-                //                 }
-                //                 other => return Err(anyhow::anyhow!(other)),
-                //             },
-                //             other => return Err(anyhow::anyhow!(other)),
-                //         },
-                //         other => return Err(anyhow::anyhow!(other)),
-                //     },
-                // };
                 return Ok(());
             }
             MusicServer::Netease => todo!(),
@@ -256,8 +238,8 @@ impl MusicAggregator {
         let db = get_db()
             .await
             .ok_or(anyhow::anyhow!("Database is not inited"))?;
-        let mut update_actives = Vec::with_capacity(aggs.len()/2);
-        let mut insert_actives = Vec::with_capacity(aggs.len()/2);
+        let mut update_actives = Vec::with_capacity(aggs.len() / 2);
+        let mut insert_actives = Vec::with_capacity(aggs.len() / 2);
 
         // 分别 构建 update 和 insert 的 active model
         for agg in aggs {
@@ -291,15 +273,12 @@ impl MusicAggregator {
             .await?;
 
         // 批量更新
-        music_aggregator::Entity::update_many()
-            .exec(&db)
-            .await?;
+        music_aggregator::Entity::update_many().exec(&db).await?;
 
         Ok(())
     }
 
     pub async fn insert_to_db(&self) -> Result<(), anyhow::Error> {
-        println!("Inserting music aggregator: {:?}", self);
         if self.from_db {
             return Err(anyhow::anyhow!(
                 "Can't insert music aggregator from db into db."
@@ -334,7 +313,10 @@ impl MusicAggregator {
                 kuwo_music_id: Set(kuwo_id),
                 netease_music_id: Set(None),
             };
-            music_aggregator::Entity::insert(agg).on_conflict_do_nothing().exec(&db).await?;
+            music_aggregator::Entity::insert(agg)
+                .on_conflict_do_nothing()
+                .exec(&db)
+                .await?;
         }
 
         // 维护分别的音乐表

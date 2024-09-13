@@ -339,7 +339,9 @@ mod test_playlist {
 
         let insert_id = playlist.insert_to_db().await.unwrap();
         let playlist = Playlist::find_in_db(insert_id).await.unwrap();
-
+        // 测量此处耗时
+        let start = std::time::Instant::now();
         playlist.add_aggs_to_db(&aggs).await.unwrap();
+        println!("Add aggs to db cost: {:?}", start.elapsed());
     }
 }
