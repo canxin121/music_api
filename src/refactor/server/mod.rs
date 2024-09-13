@@ -7,6 +7,7 @@ use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
 
 pub mod kuwo;
+pub mod netease;
 
 pub static CLIENT: LazyLock<ClientWithMiddleware> = LazyLock::new(|| {
     ClientBuilder::new(
