@@ -1,4 +1,4 @@
-use crate::refactor::server::{KuwoMusicModel, CLIENT};
+use crate::refactor::{data::interface::artist::Artist, server::{KuwoMusicModel, CLIENT}};
 
 use serde::{Deserialize, Serialize};
 
@@ -83,8 +83,8 @@ pub struct SearchMusic {
     // pub alias: String,
     #[serde(rename = "ARTIST")]
     pub artist: String,
-    #[serde(rename = "ARTISTID")]
-    pub artistid: String,
+    // #[serde(rename = "ARTISTID")]
+    // pub artistid: String,
     // #[serde(rename = "CanSetRing")]
     // pub can_set_ring: String,
     // #[serde(rename = "CanSetRingback")]
@@ -137,7 +137,7 @@ pub struct SearchMusic {
     // pub ad_subtype: String,
     // #[serde(rename = "ad_type")]
     // pub ad_type: String,
-    // pub allartistid: String,
+    pub allartistid: String,
     // pub audiobookpayinfo: Audiobookpayinfo2,
     // pub barrage: String,
     // #[serde(rename = "cache_status")]
@@ -181,11 +181,31 @@ pub struct SearchMusic {
 
 impl Into<crate::refactor::server::kuwo::model::Model> for SearchMusic {
     fn into(self) -> crate::refactor::server::kuwo::model::Model {
+        let artist_names = self
+            .artist
+            .split("&")
+            .filter(|a| !a.is_empty())
+            .collect::<Vec<&str>>();
+        let artist_ids = self
+            .allartistid
+            .split("&")
+            .filter(|a| !a.is_empty())
+            .collect::<Vec<&str>>();
+        let artists: Vec<Artist> = artist_names
+            .into_iter()
+            .zip(artist_ids.into_iter().chain(std::iter::repeat("")))
+            .map(
+                |(name, id)| crate::refactor::data::interface::artist::Artist {
+                    name: name.to_string(),
+                    id: id.parse().ok(),
+                },
+            )
+            .collect();
+        let artists = crate::refactor::data::interface::artist::ArtistVec::from(artists);
         crate::refactor::server::kuwo::model::Model {
             name: self.name,
             music_id: self.musicrid,
-            artist: self.artist,
-            artist_id: self.artistid,
+            artists,
             album: Some(self.album),
             album_id: Some(self.albumid),
             qualities: parse_qualities_minfo(&self.minfo).into(),

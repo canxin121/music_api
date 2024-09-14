@@ -2,7 +2,10 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 use crate::refactor::{
-    data::interface::playlist::{Playlist, PlaylistType},
+    data::interface::{
+        artist::Artist,
+        playlist::{Playlist, PlaylistType},
+    },
     server::{KuwoMusicModel, CLIENT},
 };
 
@@ -145,9 +148,9 @@ pub struct AlbumMusic {
     // pub ad_subtype: String,
     // #[serde(rename = "ad_type")]
     // pub ad_type: String,
-    // pub allartistid: String,
+    pub allartistid: String,
     pub artist: String,
-    pub artistid: String,
+    // pub artistid: String,
     // pub audiobookpayinfo: Audiobookpayinfo,
     // pub barrage: String,
     // #[serde(rename = "cache_status")]
@@ -209,11 +212,31 @@ pub struct AlbumMusic {
 
 impl Into<crate::refactor::server::kuwo::model::Model> for AlbumMusic {
     fn into(self) -> crate::refactor::server::kuwo::model::Model {
+        let artist_names = self
+            .artist
+            .split("&")
+            .filter(|a| !a.is_empty())
+            .collect::<Vec<&str>>();
+        let artist_ids = self
+            .allartistid
+            .split("&")
+            .filter(|a| !a.is_empty())
+            .collect::<Vec<&str>>();
+        let artists: Vec<Artist> = artist_names
+            .into_iter()
+            .zip(artist_ids.into_iter().chain(std::iter::repeat("")))
+            .map(
+                |(name, id)| crate::refactor::data::interface::artist::Artist {
+                    name: name.to_string(),
+                    id: id.parse().ok(),
+                },
+            )
+            .collect();
+        let artists = crate::refactor::data::interface::artist::ArtistVec::from(artists);
         crate::refactor::server::kuwo::model::Model {
             name: self.name,
             music_id: self.id,
-            artist: self.artist,
-            artist_id: self.artistid,
+            artists,
             album: Some(self.album),
             album_id: Some(self.album_id),
             qualities: Default::default(),

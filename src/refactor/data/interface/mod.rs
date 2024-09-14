@@ -3,6 +3,7 @@
 ///
 use serde::{Deserialize, Serialize};
 
+pub mod artist;
 pub mod music_aggregator;
 pub mod playlist;
 pub mod quality;

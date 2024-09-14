@@ -5,8 +5,6 @@ use crate::refactor::data::{
 use anyhow::Result;
 use sea_orm::entity::prelude::*;
 
-use super::web_api::get_kuwo_lyric;
-
 #[derive(Default, Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "kuwo_music")]
 pub struct Model {
@@ -19,13 +17,6 @@ pub struct Model {
     pub album_id: Option<String>,
     pub qualities: QualityVec,
     pub cover: Option<String>,
-}
-
-impl Model {
-    pub async fn get_lyric(&self) -> Result<String> {
-        let lyric = get_kuwo_lyric(&self.music_id).await?;
-        Ok(lyric)
-    }
 }
 
 impl Model {

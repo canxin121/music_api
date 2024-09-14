@@ -66,15 +66,15 @@ impl Lrc {
 
 pub async fn get_lyric(music_id: &str) -> Result<String, anyhow::Error> {
     let data = &json!({
-      "id": music_id,
-      "cp": false,
-      "tv": 0,
-      "lv": 0,
-      "rv": 0,
-      "kv": 0,
-      "yv": 0,
-      "ytv": 0,
-      "yrv": 0,
+        "id": music_id,
+        "cp": false,
+        "tv": 0,
+        "lv": 0,
+        "rv": 0,
+        "kv": 0,
+        "yv": 0,
+        "ytv": 0,
+        "yrv": 0,
     })
     .to_string();
     let resp = eapi_request(r#"/api/song/lyric/v1"#, &data).await?;

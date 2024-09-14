@@ -19,10 +19,10 @@ type Aes128EcbEnc = ecb::Encryptor<aes::Aes128>;
 type Aes128EcbDec = ecb::Decryptor<aes::Aes128>;
 
 lazy_static! {
-    static ref IV: [u8; 16] = *b"0102030405060708"; // 初始化向量
-    static ref PRESET_KEY: [u8; 16] = *b"0CoJUm6Qyw8W8jud"; // 预设AES密钥
-    static ref LINUXAPI_KEY: [u8; 16] = *b"rFgB&h#%2?^eDg:Q"; // Linux API密钥
-    static ref EAPI_KEY: [u8; 16] = *b"e82ckenh8dichen8"; // eAPI密钥
+    static ref IV: [u8; 16] = *b"0102030405060708";
+    static ref PRESET_KEY: [u8; 16] = *b"0CoJUm6Qyw8W8jud";
+    static ref LINUXAPI_KEY: [u8; 16] = *b"rFgB&h#%2?^eDg:Q";
+    static ref EAPI_KEY: [u8; 16] = *b"e82ckenh8dichen8";
     static ref RSA_PUBKEY: RsaPublicKey = {
         let pub_key_pem = include_str!("rsa_pub_key.pem");
         RsaPublicKey::from_public_key_pem(pub_key_pem).unwrap()
@@ -148,44 +148,35 @@ pub fn linux_api(text: &str) -> HashMap<&'static str, String> {
 
 #[test]
 fn test() {
-    // 要加密的明文
     let plaintext = b"hello world! this is my plaintext.";
 
-    // CBC模式加密
     let ciphertext_cbc = aes_encrypt(plaintext, &PRESET_KEY, Some(&IV), AesMode::CBC);
     println!("CBC Ciphertext (hex): {:?}", hex::encode(&ciphertext_cbc));
 
-    // CBC模式解密
     let decrypted_text_cbc = aes_decrypt(&ciphertext_cbc, &PRESET_KEY, Some(&IV), AesMode::CBC);
     println!(
         "CBC Decrypted text: {:?}",
         String::from_utf8(decrypted_text_cbc).unwrap()
     );
 
-    // ECB模式加密
     let ciphertext_ecb = aes_encrypt(plaintext, &PRESET_KEY, None, AesMode::ECB);
     println!("ECB Ciphertext (hex): {:?}", hex::encode(&ciphertext_ecb));
 
-    // ECB模式解密
     let decrypted_text_ecb = aes_decrypt(&ciphertext_ecb, &PRESET_KEY, None, AesMode::ECB);
     println!(
         "ECB Decrypted text: {:?}",
         String::from_utf8(decrypted_text_ecb).unwrap()
     );
 
-    // RSA加密
     let encrypted_hex = rsa_encrypt_to_hex(plaintext).unwrap();
     println!("RSA Encrypted (hex): {:?}", encrypted_hex);
 
-    // weapi加密
     let weapi_params = weapi("hello world!").unwrap();
     println!("weapi params: {:?}", weapi_params);
 
-    // eapi加密
     let eapi_params = eapi("/api/v1/resource", "hello world!");
     println!("eapi params: {:?}", eapi_params);
 
-    // linuxapi加密
     let linuxapi_params = linux_api("hello world!");
     println!("linuxapi params: {:?}", linuxapi_params);
 }

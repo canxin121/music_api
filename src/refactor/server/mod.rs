@@ -31,7 +31,8 @@ use super::data::interface::playlist::Playlist;
 use super::data::interface::MusicServer;
 
 impl Music {
-    pub async fn search(
+    /// Search music online
+    pub async fn search_online(
         servers: Vec<MusicServer>,
         content: String,
         page: u32,
@@ -69,8 +70,7 @@ impl Music {
         Ok(musics)
     }
 
-    // 由于专辑歌曲较少，有的平台不分页，因此第一次就返回所有的歌曲(可能就是全部)
-    // Playlist仅在第一页返回
+    /// return the album playlist on first page, and musics on each page
     pub async fn get_album(&self, page: u16, limit: u16) -> Result<(Option<Playlist>, Vec<Music>)> {
         match self.server {
             MusicServer::Kuwo => {
@@ -103,7 +103,7 @@ mod server_music_test {
 
     #[tokio::test]
     async fn test_search() {
-        let musics = Music::search(vec![MusicServer::Kuwo], "Lemon 米津玄师".to_string(), 1, 10)
+        let musics = Music::search_online(vec![MusicServer::Kuwo], "Lemon 米津玄师".to_string(), 1, 10)
             .await
             .unwrap();
         println!("{:?}", musics);
@@ -111,7 +111,8 @@ mod server_music_test {
 }
 
 impl Playlist {
-    pub async fn search(
+    /// Search playlist online
+    pub async fn search_online(
         servers: Vec<MusicServer>,
         content: String,
         page: u32,
@@ -149,7 +150,8 @@ impl Playlist {
         Ok(playlists)
     }
 
-    pub async fn from_share(share: &str) -> Result<Self> {
+    /// get a playlist from share link
+    pub async fn get_from_share(share: &str) -> Result<Self> {
         if share.contains("kuwo") {
             get_kuwo_music_list_from_share(share).await
         } else {
@@ -157,9 +159,8 @@ impl Playlist {
         }
     }
 
-    pub async fn fetch_musics(&self, page: u16, limit: u16) -> Result<Vec<MusicAggregator>> {
-        // 返回的一定是单个server的音乐
-        // 因此可以直接构建新的MusicAggregator
+    /// Fetch musics from playlist
+    pub async fn fetch_musics_online(&self, page: u16, limit: u16) -> Result<Vec<MusicAggregator>> {
         if self.from_db || self.server.is_none() {
             return Err(anyhow::anyhow!("Cant't get music from db playlist"));
         }
@@ -257,12 +258,12 @@ mod server_test {
     #[tokio::test]
     async fn test_search() {
         let playlists =
-            super::Playlist::search(vec![super::MusicServer::Kuwo], "周杰伦".to_string(), 8, 10)
+            super::Playlist::search_online(vec![super::MusicServer::Kuwo], "周杰伦".to_string(), 8, 10)
                 .await
                 .unwrap();
         assert!(playlists.len() <= 10 && playlists.len() > 0);
 
-        let playlists = super::Playlist::search(
+        let playlists = super::Playlist::search_online(
             vec![super::MusicServer::Kuwo],
             "周杰伦".to_string(),
             9999,
@@ -276,25 +277,25 @@ mod server_test {
     #[tokio::test]
     async fn test_fetch_musics() {
         let playlists =
-            super::Playlist::search(vec![super::MusicServer::Kuwo], "周杰伦".to_string(), 1, 10)
+            super::Playlist::search_online(vec![super::MusicServer::Kuwo], "周杰伦".to_string(), 1, 10)
                 .await
                 .unwrap();
         let playlist = playlists.first().unwrap();
-        let musics = playlist.fetch_musics(1, 10).await.unwrap();
+        let musics = playlist.fetch_musics_online(1, 10).await.unwrap();
         assert!(musics.len() > 0 && musics.len() <= 10);
-        let musics = playlist.fetch_musics(999, 10).await.unwrap();
+        let musics = playlist.fetch_musics_online(999, 10).await.unwrap();
         assert!(musics.len() == 0)
     }
 
     #[tokio::test]
     async fn test_fetch_all_musics() {
         let playlists =
-            super::Playlist::search(vec![super::MusicServer::Kuwo], "周杰伦".to_string(), 1, 10)
+            super::Playlist::search_online(vec![super::MusicServer::Kuwo], "周杰伦".to_string(), 1, 10)
                 .await
                 .unwrap();
         let playlist = playlists.first().unwrap();
         let start = std::time::Instant::now();
-        let musics = playlist.fetch_musics(1, 999).await.unwrap();
+        let musics = playlist.fetch_musics_online(1, 999).await.unwrap();
 
         println!("{:?}", musics);
         println!("Time: {:?}", start.elapsed());
@@ -304,7 +305,7 @@ mod server_test {
 
     #[tokio::test]
     async fn test_from_share() {
-        let playlist = Playlist::from_share(
+        let playlist = Playlist::get_from_share(
             "https://m.kuwo.cn/newh5app/playlist_detail/1312045587?from=ip&t=qqfriend",
         )
         .await

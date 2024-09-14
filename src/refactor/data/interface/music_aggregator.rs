@@ -8,7 +8,7 @@ use crate::refactor::{
     server::kuwo,
 };
 
-use super::{quality::QualityVec, utils::is_artist_equal, MusicServer};
+use super::{artist::ArtistVec, quality::QualityVec, utils::is_artist_equal, MusicServer};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Music {
@@ -17,8 +17,7 @@ pub struct Music {
     pub indentity: String,
     pub name: String,
     pub duration: Option<i64>,
-    pub artist: String,
-    pub artist_id: String,
+    pub artists: ArtistVec,
     pub album: Option<String>,
     pub album_id: Option<String>,
     pub qualities: QualityVec,
@@ -28,25 +27,6 @@ pub struct Music {
 /// Music被添加了外键约束， 无需手动删除
 /// 同时不希望Music被外部直接使用，而是使用MusicAggregator，因此不能直接获得Music
 impl Music {
-    /// 从数据库中获取Music
-    // pub async fn get_from_db(servers: Vec<MusicServer>) -> Result<Vec<Self>, anyhow::Error> {
-    //     let db = get_db().await.expect("Database is not inited");
-    //     let mut musics = Vec::new();
-    //     for server in servers {
-    //         match server {
-    //             MusicServer::Kuwo => {
-    //                 let models = kuwo::model::Entity::find().all(&db).await?;
-    //                 for model in models {
-    //                     musics.push(model.into());
-    //                 }
-    //             }
-    //             MusicServer::Netease => todo!(),
-    //             MusicServer::Database => todo!(),
-    //         }
-    //     }
-    //     Ok(musics)
-    // }
-
     /// 允许外部调用更新音乐的功能
     pub async fn update_to_db(&self) -> anyhow::Result<Self> {
         if !self.from_db {
@@ -63,8 +43,7 @@ impl Music {
                 active.name = Set(self.name.clone());
                 active.album = Set(self.album.clone());
                 active.album_id = Set(self.album_id.clone());
-                active.artist = Set(self.artist.clone());
-                active.artist_id = Set(self.artist_id.clone());
+                active.artists = Set(self.artists.clone());
                 active.duration = Set(self.duration);
                 active.cover = Set(self.cover.clone());
 
@@ -75,9 +54,7 @@ impl Music {
         }
     }
 
-    /// 将Music保存到数据库中对应的Server表中
-    /// 如果来自数据库，则更新
-    /// 如果不来自数据库，则插入
+    /// 将Music插入到数据库中对应的Server表中
     pub(crate) async fn insert_to_db(&self) -> anyhow::Result<()> {
         if self.from_db {
             return Err(anyhow::anyhow!("Music from db, can't insert"));
@@ -100,85 +77,7 @@ impl Music {
             MusicServer::Netease => todo!(),
         }
     }
-
-    // 从数据库中删除对应的音乐
-    // 如果Music不存在， 则不会进行任何操作
-    // pub(crate) async fn del_from_db(&self) -> Result<(), anyhow::Error> {
-    //     let db = get_db()
-    //         .await
-    //         .ok_or(anyhow::anyhow!("Database is not inited"))?;
-    //     match self.server {
-    //         MusicServer::Kuwo => {
-    //             if let Err(e) = kuwo::model::Entity::delete_by_id(&self.indentity)
-    //                 .exec(&db)
-    //                 .await
-    //             {
-    //                 match e {
-    //                     sea_orm::DbErr::RecordNotFound(_) => {}
-    //                     other => return Err(anyhow::anyhow!("Failed to delete music: {}", other)),
-    //                 }
-    //             };
-    //         }
-    //         MusicServer::Netease => todo!(),
-    //         MusicServer::Database => todo!(),
-    //     }
-    //     Ok(())
-    // }
 }
-
-// #[cfg(test)]
-// mod test_music {
-//     use sea_orm_migration::MigratorTrait;
-
-//     use crate::refactor::data::{
-//         get_db, init_db,
-//         interface::{music_aggregator::Music, MusicServer},
-//         migrations::Migrator,
-//     };
-
-//     async fn re_init_db() {
-//         let db_file = "./test.db";
-//         let path = std::path::Path::new(db_file);
-//         if path.exists() {
-//             std::fs::remove_file(path).unwrap();
-//         }
-//         std::fs::File::create(path).unwrap();
-
-//         init_db(&("sqlite://".to_owned() + db_file)).await.unwrap();
-//         Migrator::up(&get_db().await.unwrap(), None).await.unwrap();
-//     }
-
-//     #[tokio::test]
-//     async fn test_all() {
-//         re_init_db().await;
-//         let musics = Music::search(vec![MusicServer::Kuwo], "Aimer".to_string(), 1, 30)
-//             .await
-//             .unwrap();
-//         let len = musics.len();
-//         println!("{:?}", musics);
-//         let mut saved_musics = Vec::with_capacity(musics.len());
-//         for music in musics {
-//             let saved_music = music.save_to_db().await.unwrap();
-//             saved_musics.push(saved_music);
-//         }
-//         println!("{:?}", saved_musics);
-//         for saved_music in saved_musics {
-//             saved_music.save_to_db().await.unwrap();
-//         }
-//         let musics = Music::get_from_db(vec![MusicServer::Kuwo]).await.unwrap();
-//         assert!(musics.len() == len);
-//         for music in musics {
-//             music.del_from_db().await.unwrap();
-//         }
-//         assert!(
-//             Music::get_from_db(vec![MusicServer::Kuwo])
-//                 .await
-//                 .unwrap()
-//                 .len()
-//                 == 0
-//         );
-//     }
-// }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MusicAggregator {
@@ -198,7 +97,12 @@ impl MusicAggregator {
     pub fn from_music(music: Music) -> Self {
         MusicAggregator {
             name: music.name.clone(),
-            artist: music.artist.clone(),
+            artist: music
+                .artists
+                .iter()
+                .map(|x| x.name.clone())
+                .collect::<Vec<String>>()
+                .join("&"),
             from_db: music.from_db,
             musics: vec![music],
         }
@@ -298,7 +202,7 @@ impl MusicAggregator {
 
     /// 直接转移所有权是为了ffi时规避rust的生命周期问题
     /// 搜索音乐聚合
-    pub async fn search(
+    pub async fn search_online(
         aggs: Vec<MusicAggregator>,
         servers: Vec<MusicServer>,
         content: String,
@@ -325,9 +229,21 @@ impl MusicAggregator {
         };
 
         let mut success = false;
-        if let Some(musics) = Music::search(servers, content, page, size).await.ok() {
+        if let Some(musics) = Music::search_online(servers, content, page, size)
+            .await
+            .ok()
+        {
             for music in musics {
-                let identity = format!("{}#+#{}", music.name, music.artist);
+                let identity = format!(
+                    "{}#+#{}",
+                    music.name,
+                    music
+                        .artists
+                        .iter()
+                        .map(|x| x.name.clone())
+                        .collect::<Vec<String>>()
+                        .join("&")
+                );
                 if let Some(pair) = map.get_mut(&identity) {
                     if !pair.1.musics.iter().any(|x| x.server == music.server) {
                         pair.1.musics.push(music);
@@ -340,7 +256,12 @@ impl MusicAggregator {
                             index,
                             MusicAggregator {
                                 name: music.name.clone(),
-                                artist: music.artist.clone(),
+                                artist: music
+                                    .artists
+                                    .iter()
+                                    .map(|x| x.name.clone())
+                                    .collect::<Vec<String>>()
+                                    .join("&"),
                                 from_db: false,
                                 musics: vec![music],
                             },
@@ -363,7 +284,7 @@ impl MusicAggregator {
         }
     }
 
-    pub async fn fetch_server(
+    pub async fn fetch_server_online(
         mut self,
         mut servers: Vec<MusicServer>,
     ) -> Result<Self, (Self, String)> {
@@ -372,7 +293,7 @@ impl MusicAggregator {
         if servers.is_empty() {
             return Err((self, "No more servers to fetch".to_string()));
         }
-        match Music::search(servers.clone(), self.identity(), 1, 10).await {
+        match Music::search_online(servers.clone(), self.identity(), 1, 10).await {
             Ok(musics) => {
                 if musics.is_empty() {
                     return Err((self, "No musics found from servers".to_string()));
@@ -381,7 +302,14 @@ impl MusicAggregator {
                     if let Some(music) = musics.iter().find(|x| {
                         x.server == server
                             && x.name == self.name
-                            && is_artist_equal(&x.artist, &self.artist)
+                            && is_artist_equal(
+                                &x.artists
+                                    .iter()
+                                    .map(|a| a.name.clone())
+                                    .collect::<Vec<String>>()
+                                    .join("&"),
+                                &self.artist,
+                            )
                     }) {
                         self.musics.push(music.clone());
                     }
@@ -422,7 +350,7 @@ mod test_music_aggregator {
         let content = "米津玄师".to_string();
         let page = 1;
         let size = 5;
-        let aggs = MusicAggregator::search(aggs, servers, content, page, size)
+        let aggs = MusicAggregator::search_online(aggs, servers, content, page, size)
             .await
             .unwrap();
         aggs
@@ -496,7 +424,7 @@ mod test_music_aggregator {
             musics: vec![],
         };
         let servers = vec![MusicServer::Kuwo];
-        let agg = agg.fetch_server(servers).await.unwrap();
+        let agg = agg.fetch_server_online(servers).await.unwrap();
         println!("{:?}", agg);
     }
 }

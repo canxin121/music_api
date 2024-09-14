@@ -65,7 +65,7 @@ impl Into<Playlist> for ShareMusicList {
 async fn test_share() {
     let share = "https://m.kuwo.cn/newh5app/playlist_detail/1312045587?from=ip&t=qqfriend";
     let playlist = get_kuwo_music_list_from_share(share).await.unwrap();
-    let musics = playlist.fetch_musics(1, 9999).await.unwrap();
+    let musics = playlist.fetch_musics_online(1, 9999).await.unwrap();
     println!("{:?}", musics);
 
     println!("Length: {}", musics.len());

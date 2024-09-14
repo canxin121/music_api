@@ -25,14 +25,15 @@ impl SearchTarget {
     }
 }
 
-// page starts with 1.
 pub async fn wy_search(
     search_target: SearchTarget,
     content: &str,
-    page: u32,
-    limit: u32,
+    page: u16,
+    limit: u16,
 ) -> Result<String, anyhow::Error> {
-    assert!(page >= 1);
+    if page == 0 {
+        return Err(anyhow::anyhow!("Page must be greater than 0"));
+    }
     let offset = limit * (page - 1);
     let total = page == 1;
 
@@ -52,10 +53,18 @@ pub async fn wy_search(
 // 搜索单曲
 pub async fn search_single_music(
     content: &str,
-    page: u32,
-    limit: u32,
+    page: u16,
+    limit: u16,
 ) -> Result<(), anyhow::Error> {
-    assert!(page >= 1, "Page must be greater than 0");
     let resp = wy_search(SearchTarget::SingleMusic, content, page, limit).await?;
+    std::fs::write("sample_data/netease/search_music.json", resp).expect("Failed to write result to file");
     todo!()
+}
+
+#[tokio::test]
+async fn test_search_netease_single_music() {
+    let content = "张惠妹";
+    let page = 1;
+    let limit = 30;
+    let result = search_single_music(content, page, limit).await.unwrap();
 }

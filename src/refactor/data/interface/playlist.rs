@@ -121,6 +121,7 @@ impl Playlist {
         }
     }
 
+    // insert a playlist to db
     pub async fn insert_to_db(&self) -> Result<i64> {
         if self.from_db && !self.identity.is_empty() {
             return Err(anyhow::anyhow!("Playlist from db, can't insert."));
@@ -145,9 +146,8 @@ impl Playlist {
         Ok(last_id)
     }
 
-    /// 从数据库中删除一个歌单, 同时删除歌单和音乐的关联
-    /// 如果是其他平台的歌单， 则无法删除
-    /// 注意这将取走歌单的所有权， ffi时应当注意生命周期
+    /// delete a playlist from db
+    /// this will also delete all junctions between the playlist and music
     pub async fn del_from_db(self) -> Result<()> {
         if !self.from_db {
             return Err(anyhow::anyhow!(
@@ -163,7 +163,7 @@ impl Playlist {
         Ok(())
     }
 
-    /// 从数据库中获取所有歌单
+    /// get playlists from db
     pub async fn get_from_db() -> Result<Vec<Self>> {
         let db = get_db()
             .await
@@ -172,7 +172,8 @@ impl Playlist {
         Ok(models.into_iter().map(|m| m.into()).collect())
     }
 
-    /// 将音乐添加到数据库歌单中
+    /// add playlist music aggregator junction to db
+    /// this will also add the music and music aggregators to the db
     pub async fn add_aggs_to_db(&self, music_aggs: &Vec<MusicAggregator>) -> Result<()> {
         if !self.from_db {
             return Err(anyhow::anyhow!(
@@ -210,7 +211,7 @@ impl Playlist {
         Ok(())
     }
 
-    /// 获取数据库歌单中的音乐
+    /// get all music aggregators from db
     pub async fn get_musics_from_db(&self) -> Result<Vec<MusicAggregator>> {
         if !self.from_db {
             return Err(anyhow::anyhow!(
@@ -321,7 +322,7 @@ mod test_playlist {
 
         let aggs = vec![];
         let aggs =
-            MusicAggregator::search(aggs, vec![MusicServer::Kuwo], "Aimer".to_string(), 1, 30)
+            MusicAggregator::search_online(aggs, vec![MusicServer::Kuwo], "Aimer".to_string(), 1, 30)
                 .await
                 .unwrap();
 
@@ -332,9 +333,9 @@ mod test_playlist {
     #[serial]
     async fn test_add_aggs_to_db2() {
         re_init_db().await;
-        let playlists = Playlist::search(vec![MusicServer::Kuwo], "Aimer".to_string(), 1, 30);
+        let playlists = Playlist::search_online(vec![MusicServer::Kuwo], "Aimer".to_string(), 1, 30);
         let playlist = playlists.await.unwrap().into_iter().next().unwrap();
-        let aggs = playlist.fetch_musics(1, 30).await.unwrap();
+        let aggs = playlist.fetch_musics_online(1, 30).await.unwrap();
 
         let insert_id = playlist.insert_to_db().await.unwrap();
         let playlist = Playlist::find_in_db(insert_id).await.unwrap();
@@ -348,9 +349,9 @@ mod test_playlist {
     #[serial]
     async fn test_get_musics_from_db() {
         re_init_db().await;
-        let playlists = Playlist::search(vec![MusicServer::Kuwo], "Aimer".to_string(), 1, 30);
+        let playlists = Playlist::search_online(vec![MusicServer::Kuwo], "Aimer".to_string(), 1, 30);
         let playlist = playlists.await.unwrap().into_iter().next().unwrap();
-        let aggs = playlist.fetch_musics(1, 30).await.unwrap();
+        let aggs = playlist.fetch_musics_online(1, 30).await.unwrap();
 
         let insert_id = playlist.insert_to_db().await.unwrap();
         let playlist = Playlist::find_in_db(insert_id).await.unwrap();

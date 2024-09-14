@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use urlencoding::encode;
 
 use crate::refactor::{
-    data::interface::playlist::Playlist,
+    data::interface::{artist::Artist, playlist::Playlist},
     server::{KuwoMusicModel, CLIENT},
 };
 
@@ -231,23 +231,30 @@ pub struct MusiclistMusic {
 
 impl Into<crate::refactor::server::kuwo::model::Model> for MusiclistMusic {
     fn into(self) -> crate::refactor::server::kuwo::model::Model {
+        let artist_names = self.artist.split("&").collect::<Vec<&str>>();
+        let artist_ids = self.artistid.split("&").collect::<Vec<&str>>();
+
+        let artists: Vec<Artist> = artist_names
+            .into_iter()
+            .zip(artist_ids.into_iter().chain(std::iter::repeat("")))
+            .map(
+                |(name, id)| crate::refactor::data::interface::artist::Artist {
+                    name: name.to_string(),
+                    id: id.parse().ok(),
+                },
+            )
+            .collect();
+        let artists = crate::refactor::data::interface::artist::ArtistVec::from(artists);
+
         crate::refactor::server::kuwo::model::Model {
             name: self.name,
+            artists,
             music_id: self.id,
-            artist: self.artist,
-            artist_id: self.artistid,
             album: Some(self.album),
             album_id: Some(self.albumid),
             qualities: parse_qualities_minfo(&self.minfo).into(),
             cover: self.cover,
-            // artist_pic: None,
-            // album_pic: None,
             duration: self.duration.parse().ok(),
-            // mv_vid: if self.mvpayinfo.vid.is_empty() {
-            //     None
-            // } else {
-            //     Some(self.mvpayinfo.vid)
-            // },
         }
     }
 }

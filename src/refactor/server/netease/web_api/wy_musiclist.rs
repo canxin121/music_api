@@ -11,7 +11,7 @@ use crate::refactor::server::{
 };
 
 // 搜索歌单
-pub async fn search_music_list(content: &str, page: u32, limit: u32) -> Result<(), anyhow::Error> {
+pub async fn search_music_list(content: &str, page: u16, limit: u16) -> Result<(), anyhow::Error> {
     assert!(page >= 1, "Page must be greater than 0");
     let resp = wy_search(SearchTarget::MusicList, content, page, limit).await?;
     todo!()
