@@ -6,15 +6,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::data::{
     get_db,
-    models::{
-        music_aggregator,
-        playlist::{self, PlayListSubscription, PlayListSubscriptionVec},
-        playlist_music_junction,
-    },
+    models::{music_aggregator, playlist, playlist_music_junction},
 };
 use anyhow::Result;
 
-use super::{music_aggregator::MusicAggregator, server::MusicServer};
+use super::{music_aggregator::MusicAggregator, playlist_subscription::{PlayListSubscription, PlayListSubscriptionVec}, server::MusicServer};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PlaylistType {
