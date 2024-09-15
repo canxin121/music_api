@@ -1,4 +1,7 @@
-use crate::{data::interface::artist::Artist, server::{KuwoMusicModel, CLIENT}};
+use crate::{
+    data::interface::artist::Artist,
+    server::{kuwo, CLIENT},
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -8,7 +11,7 @@ pub async fn search_kuwo_musics(
     content: &str,
     page: u32,
     limit: u32,
-) -> Result<Vec<KuwoMusicModel>, anyhow::Error> {
+) -> Result<Vec<kuwo::model::Model>, anyhow::Error> {
     if page == 0 {
         return Err(anyhow::anyhow!("page must be greater than 0"));
     }
@@ -16,7 +19,8 @@ pub async fn search_kuwo_musics(
     let url = format!("http://search.kuwo.cn/r.s?client=kt&all={}&pn={}&rn={}&uid=794762570&ver=kwplayer_ar_9.2.2.1&vipver=1&show_copyright_off=1&newver=1&ft=music&cluster=0&strategy=2012&encoding=utf8&rformat=json&vermerge=1&mobi=1&issubtitle=1",urlencoding::encode(content),page-1,limit);
 
     let result: KuwoMusics = CLIENT.get(&url).send().await?.json().await?;
-    let mut musics: Vec<KuwoMusicModel> = result.abslist.into_iter().map(|m| m.into()).collect();
+    let mut musics: Vec<kuwo::model::Model> =
+        result.abslist.into_iter().map(|m| m.into()).collect();
     let mut handles = Vec::with_capacity(musics.len());
     for music in &musics {
         let id = music.music_id.clone();
@@ -194,12 +198,10 @@ impl Into<crate::server::kuwo::model::Model> for SearchMusic {
         let artists: Vec<Artist> = artist_names
             .into_iter()
             .zip(artist_ids.into_iter().chain(std::iter::repeat("")))
-            .map(
-                |(name, id)| crate::data::interface::artist::Artist {
-                    name: name.to_string(),
-                    id: id.parse().ok(),
-                },
-            )
+            .map(|(name, id)| crate::data::interface::artist::Artist {
+                name: name.to_string(),
+                id: id.parse().ok(),
+            })
             .collect();
         let artists = crate::data::interface::artist::ArtistVec::from(artists);
         crate::server::kuwo::model::Model {

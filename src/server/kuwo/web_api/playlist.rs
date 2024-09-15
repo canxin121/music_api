@@ -4,7 +4,7 @@ use urlencoding::encode;
 
 use crate::{
     data::interface::{artist::Artist, playlist::Playlist, server::MusicServer},
-    server::{KuwoMusicModel, CLIENT},
+    server::{kuwo, CLIENT},
 };
 
 use super::utils::{get_music_rid_pic, parse_qualities_minfo};
@@ -29,7 +29,7 @@ pub async fn get_kuwo_musics_of_music_list(
     playlist_id: &str,
     page: u16,
     limit: u16,
-) -> Result<Vec<KuwoMusicModel>> {
+) -> Result<Vec<kuwo::model::Model>> {
     let url = format!("http://nplserver.kuwo.cn/pl.svc?op=getlistinfo&pid={playlist_id}&pn={}&rn={limit}&encode=utf8&keyset=pl2012&identity=kuwo&pcmp4=1&vipver=MUSIC_9.0.5.0_W1&newver=1",page-1);
 
     let mut musiclist: GetMusicListResult = CLIENT.get(url).send().await?.json().await?;
@@ -237,12 +237,10 @@ impl Into<crate::server::kuwo::model::Model> for MusiclistMusic {
         let artists: Vec<Artist> = artist_names
             .into_iter()
             .zip(artist_ids.into_iter().chain(std::iter::repeat("")))
-            .map(
-                |(name, id)| crate::data::interface::artist::Artist {
-                    name: name.to_string(),
-                    id: id.parse().ok(),
-                },
-            )
+            .map(|(name, id)| crate::data::interface::artist::Artist {
+                name: name.to_string(),
+                id: id.parse().ok(),
+            })
             .collect();
         let artists = crate::data::interface::artist::ArtistVec::from(artists);
 

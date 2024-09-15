@@ -3,9 +3,9 @@ pub mod create_playlist_music_junction_table;
 pub mod create_playlist_table;
 
 use async_trait::async_trait;
-pub use sea_orm_migration::*;
+use sea_orm_migration::*;
 
-pub struct Migrator;
+pub(crate) struct Migrator;
 
 #[async_trait]
 impl MigratorTrait for Migrator {

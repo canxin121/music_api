@@ -1,6 +1,8 @@
 use crate::{data::interface::quality::Quality, server::CLIENT};
 
-pub fn decode_html_entities(input: String) -> String {
+#[allow(unused)]
+// todo: use this function in the code
+fn decode_html_entities(input: String) -> String {
     input
         .replace("&nbsp;", " ")
         .replace("&amp;", "&")
@@ -38,7 +40,8 @@ pub fn parse_qualities_minfo(input: &str) -> Vec<Quality> {
     qualities
 }
 
-pub fn parse_qualities_formats(formats: &str) -> Vec<Quality> {
+#[allow(unused)]
+fn parse_qualities_formats(formats: &str) -> Vec<Quality> {
     let mut minfo = String::new();
     if formats.contains("HIRFLAC") {
         minfo += "level:hr,bitrate:4000,format:flac,size:unknown;"
@@ -69,7 +72,7 @@ pub async fn get_music_rid_pic(music_rid: &str) -> Result<String, anyhow::Error>
     Ok(text)
 }
 
-pub fn find_id_from_share_url(url: &str) -> Option<String> {
+pub fn find_kuwo_plylist_id_from_share_url(url: &str) -> Option<String> {
     // 查找路径中的playlist_detail部分
     if let Some(start) = url.find("playlist_detail/") {
         // 提取ID部分，ID在playlist_detail/后面

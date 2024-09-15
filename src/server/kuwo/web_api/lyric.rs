@@ -3,36 +3,38 @@ use serde::Deserialize;
 use crate::server::CLIENT;
 
 #[derive(Deserialize, Debug)]
-pub struct GerLrcResult {
-    pub data: GetLrcData,
+struct GerLrcResult {
+    data: GetLrcData,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct GetLrcData {
-    pub lrclist: Vec<GetLrc>,
+struct GetLrcData {
+    lrclist: Vec<GetLrc>,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct GetLrc {
+struct GetLrc {
     #[serde(rename = "lineLyric")]
-    pub line_lyric: String,
-    pub time: String,
+    line_lyric: String,
+    time: String,
 }
 
-pub fn format_seconds_to_timestamp(seconds: f64) -> String {
+fn format_seconds_to_timestamp(seconds: f64) -> String {
     let minutes = (seconds / 60.0).floor() as i32;
     let remaining_seconds = seconds % 60.0;
     format!("{:02}:{:05.2}", minutes, remaining_seconds)
 }
 
-pub async fn get_kuwo_lyric(song_id: &str) -> Result<String, anyhow::Error> {
-    let result = CLIENT.get(format!(
-        "https://m.kuwo.cn/newh5/singles/songinfoandlrc?musicId={}",
-        song_id.replace("MUSIC_", "")
-    )).send()
-    .await?
-    .json::<GerLrcResult>()
-    .await?;
+pub(crate) async fn get_kuwo_lyric(song_id: &str) -> Result<String, anyhow::Error> {
+    let result = CLIENT
+        .get(format!(
+            "https://m.kuwo.cn/newh5/singles/songinfoandlrc?musicId={}",
+            song_id.replace("MUSIC_", "")
+        ))
+        .send()
+        .await?
+        .json::<GerLrcResult>()
+        .await?;
 
     let lyrics = result
         .data

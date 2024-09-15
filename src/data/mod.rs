@@ -1,9 +1,11 @@
 pub mod interface;
-pub mod migrations;
-pub mod models;
+pub(crate) mod migrations;
+pub(crate) mod models;
 
+use migrations::Migrator;
 use once_cell::sync::OnceCell;
 use sea_orm::{Database, DatabaseConnection};
+use sea_orm_migration::MigratorTrait;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -11,6 +13,7 @@ static DB_POOL: OnceCell<Arc<RwLock<Option<DatabaseConnection>>>> = OnceCell::ne
 
 pub async fn set_db(database_url: &str) -> Result<(), anyhow::Error> {
     let db = Database::connect(database_url).await?;
+    Migrator::up(&db, None).await?;
     let connection = Arc::new(RwLock::new(Some(db)));
     let _ = DB_POOL.set(connection);
     Ok(())

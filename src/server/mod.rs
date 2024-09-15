@@ -7,10 +7,10 @@ use std::sync::LazyLock;
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
 
-pub mod kuwo;
-pub mod netease;
+pub(crate) mod kuwo;
+pub(crate) mod netease;
 
-pub static CLIENT: LazyLock<ClientWithMiddleware> = LazyLock::new(|| {
+pub(crate) static CLIENT: LazyLock<ClientWithMiddleware> = LazyLock::new(|| {
     ClientBuilder::new(
         reqwest::Client::builder()
             .danger_accept_invalid_certs(true)
@@ -22,8 +22,6 @@ pub static CLIENT: LazyLock<ClientWithMiddleware> = LazyLock::new(|| {
     ))
     .build()
 });
-
-pub use kuwo::model::Model as KuwoMusicModel;
 
 use crate::data::interface::server::MusicServer;
 
@@ -281,6 +279,17 @@ impl Playlist {
                         .collect())
                 }
             },
+        }
+    }
+}
+
+impl Music {
+    pub async fn get_lyric(&self) -> Result<String> {
+        match self.server {
+            MusicServer::Kuwo => kuwo::web_api::lyric::get_kuwo_lyric(&self.indentity).await,
+            MusicServer::Netease => {
+                netease::web_api::lyric::get_netease_lyric(&self.indentity).await
+            }
         }
     }
 }

@@ -379,7 +379,7 @@ mod test_music_aggregator {
 
     #[tokio::test]
     #[serial]
-    pub async fn test_save() {
+    async fn test_save() {
         re_init_db().await;
         let aggs = do_search(vec![]).await;
         for agg in aggs {
@@ -390,7 +390,7 @@ mod test_music_aggregator {
 
     #[tokio::test]
     #[serial]
-    pub async fn test_save_muti() {
+    async fn test_save_muti() {
         re_init_db().await;
         let aggs = do_search(vec![]).await;
         for agg in &aggs {
@@ -405,7 +405,7 @@ mod test_music_aggregator {
 
     #[tokio::test]
     #[serial]
-    pub async fn test_get() {
+    async fn test_get() {
         let _ = tracing_subscriber::fmt::try_init();
         re_init_db().await;
         let aggs = do_search(vec![]).await;
@@ -421,7 +421,7 @@ mod test_music_aggregator {
 
     #[tokio::test]
     #[serial]
-    pub async fn test_del() {
+    async fn test_del() {
         let _ = tracing_subscriber::fmt::try_init();
         re_init_db().await;
         let aggs = do_search(vec![]).await;
@@ -437,7 +437,7 @@ mod test_music_aggregator {
 
     #[tokio::test]
     #[serial]
-    pub async fn test_fetch() {
+    async fn test_fetch() {
         let agg = MusicAggregator {
             name: "Lemon".to_string(),
             artist: "米津玄師".to_string(),

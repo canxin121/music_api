@@ -4,19 +4,20 @@ use serde::{Deserialize, Serialize};
 use crate::{
     data::interface::{
         artist::Artist,
-        playlist::{Playlist, PlaylistType}, server::MusicServer,
+        playlist::{Playlist, PlaylistType},
+        server::MusicServer,
     },
-    server::{KuwoMusicModel, CLIENT},
+    server::{kuwo, CLIENT},
 };
 
 use super::utils::get_music_rid_pic;
 
-pub async fn get_kuwo_music_album(
+pub(crate) async fn get_kuwo_music_album(
     album_id: &str,
     album_name: &str,
     page: u16,
     limit: u16,
-) -> Result<(Option<Playlist>, Vec<KuwoMusicModel>)> {
+) -> Result<(Option<Playlist>, Vec<kuwo::model::Model>)> {
     if page == 0 {
         return Err(anyhow::anyhow!("Page must be more than or equal 1."));
     }
@@ -225,12 +226,10 @@ impl Into<crate::server::kuwo::model::Model> for AlbumMusic {
         let artists: Vec<Artist> = artist_names
             .into_iter()
             .zip(artist_ids.into_iter().chain(std::iter::repeat("")))
-            .map(
-                |(name, id)| crate::data::interface::artist::Artist {
-                    name: name.to_string(),
-                    id: id.parse().ok(),
-                },
-            )
+            .map(|(name, id)| crate::data::interface::artist::Artist {
+                name: name.to_string(),
+                id: id.parse().ok(),
+            })
             .collect();
         let artists = crate::data::interface::artist::ArtistVec::from(artists);
         crate::server::kuwo::model::Model {

@@ -1,12 +1,12 @@
 use crate::{
     data::interface::{playlist::Playlist, server::MusicServer},
-    server::{kuwo::web_api::utils::find_id_from_share_url, CLIENT},
+    server::{kuwo::web_api::utils::find_kuwo_plylist_id_from_share_url, CLIENT},
 };
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 pub async fn get_kuwo_music_list_from_share(share: &str) -> Result<Playlist> {
-    let playlist_id = find_id_from_share_url(share).ok_or(anyhow::anyhow!(
+    let playlist_id = find_kuwo_plylist_id_from_share_url(share).ok_or(anyhow::anyhow!(
         "Failed to find playlist id in share content"
     ))?;
     let url = format!("http://nplserver.kuwo.cn/pl.svc?op=getlistinfo&pid={}&pn=0&rn=0&encode=utf8&keyset=pl2012&vipver=MUSIC_9.1.1.2_BCS2&newver=1",playlist_id);

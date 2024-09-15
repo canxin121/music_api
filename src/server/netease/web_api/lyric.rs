@@ -64,7 +64,7 @@ impl Lrc {
     }
 }
 
-pub async fn get_lyric(music_id: &str) -> Result<String, anyhow::Error> {
+pub async fn get_netease_lyric(music_id: &str) -> Result<String, anyhow::Error> {
     let data = &json!({
         "id": music_id,
         "cp": false,
@@ -85,7 +85,7 @@ pub async fn get_lyric(music_id: &str) -> Result<String, anyhow::Error> {
 #[tokio::test]
 async fn test_get_lyric() {
     let music_id = "522352195";
-    let result = get_lyric(music_id).await.unwrap();
+    let result = get_netease_lyric(music_id).await.unwrap();
     println!("{}", result);
     std::fs::write("lyric.lrc", result).expect("Failed to write result to file");
 }

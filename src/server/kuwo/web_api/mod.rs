@@ -1,5 +1,4 @@
 pub mod album;
-pub mod info;
 pub mod lyric;
 pub mod music;
 pub mod playlist;
@@ -10,18 +9,18 @@ pub mod utils;
 mod kuwo_web_api_test {
     use crate::{
         data::interface::playlist::Playlist,
-        server::{
-            kuwo::web_api::{
-                album::get_kuwo_music_album, info::get_kuwo_music_info, lyric::get_kuwo_lyric,
+        server::kuwo::{
+            self,
+            web_api::{
+                album::get_kuwo_music_album, lyric::get_kuwo_lyric,
                 playlist::get_kuwo_musics_of_music_list,
             },
-            KuwoMusicModel,
         },
     };
 
     use super::{music::search_kuwo_musics, playlist::search_kuwo_music_list};
 
-    async fn do_search_music() -> Vec<KuwoMusicModel> {
+    async fn do_search_music() -> Vec<kuwo::model::Model> {
         search_kuwo_musics("米津玄师", 1, 30).await.unwrap()
     }
 
@@ -76,14 +75,5 @@ mod kuwo_web_api_test {
             .await
             .unwrap();
         println!("{}", lyric);
-    }
-
-    #[tokio::test]
-    async fn test_info() {
-        let music = do_search_music().await;
-        let info = get_kuwo_music_info(&music.first().unwrap().music_id)
-            .await
-            .unwrap();
-        println!("{:?}", info);
     }
 }
