@@ -6,7 +6,7 @@ use std::sync::LazyLock;
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
 
-pub(crate) static CLIENT: LazyLock<ClientWithMiddleware> = LazyLock::new(|| {
+pub static CLIENT: LazyLock<ClientWithMiddleware> = LazyLock::new(|| {
     ClientBuilder::new(
         reqwest::Client::builder()
             .danger_accept_invalid_certs(true)
@@ -18,4 +18,3 @@ pub(crate) static CLIENT: LazyLock<ClientWithMiddleware> = LazyLock::new(|| {
     ))
     .build()
 });
-
