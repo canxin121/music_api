@@ -1,10 +1,8 @@
-use crate::{
-    data::interface::{music_aggregator::{Music, MusicAggregator}, playlist_subscription::PlayListSubscriptionVec, server::MusicServer},
-    server::{kuwo, netease},
-};
+use crate::
+    data::interface::playlist_subscription::PlayListSubscriptionVec
+;
 use anyhow::Result;
-use sea_orm::{entity::prelude::*, ActiveValue::NotSet, FromJsonQueryResult, Set};
-use serde::{Deserialize, Serialize};
+use sea_orm::{entity::prelude::*, ActiveValue::NotSet, Set};
 
 #[derive(Default, Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "playlist")]
