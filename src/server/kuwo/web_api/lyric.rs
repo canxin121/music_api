@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::server::CLIENT;
+use crate::CLIENT;
 
 #[derive(Deserialize, Debug)]
 struct GerLrcResult {

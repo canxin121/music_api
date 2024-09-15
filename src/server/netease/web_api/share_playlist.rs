@@ -1,4 +1,3 @@
-#![allow(non_snake_case)]
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -6,13 +5,15 @@ use serde_json::Value;
 
 use crate::data::interface::playlist::Playlist;
 use crate::data::interface::server::MusicServer;
-use crate::server::{netease::web_api::encrypt::linux_api, CLIENT};
+use crate::server::netease::web_api::encrypt::linux_api;
+use crate::CLIENT;
 use anyhow::Result;
 
 use super::utils::find_netease_playlist_id_from_share;
 
 pub async fn get_netease_music_list_from_share(share: &str) -> Result<Playlist> {
-    let musiclist_id = find_netease_playlist_id_from_share(share).ok_or(anyhow::anyhow!("No id found"))?;
+    let musiclist_id =
+        find_netease_playlist_id_from_share(share).ok_or(anyhow::anyhow!("No id found"))?;
 
     let data = json!({
       "method": "POST",

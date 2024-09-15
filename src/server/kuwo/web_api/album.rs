@@ -7,7 +7,8 @@ use crate::{
         playlist::{Playlist, PlaylistType},
         server::MusicServer,
     },
-    server::{kuwo, CLIENT},
+    server::kuwo,
+    CLIENT,
 };
 
 use super::utils::get_music_rid_pic;

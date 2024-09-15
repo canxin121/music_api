@@ -4,7 +4,7 @@ use urlencoding::encode;
 
 use crate::{
     data::interface::{artist::Artist, playlist::Playlist, server::MusicServer},
-    server::{kuwo, CLIENT},
+    server::kuwo, CLIENT,
 };
 
 use super::utils::{get_music_rid_pic, parse_qualities_minfo};

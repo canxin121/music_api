@@ -1,13 +1,8 @@
-#![allow(non_snake_case, unused)]
-use crate::server::CLIENT;
-use std::{fs, io::Write};
-
-use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tokio::{fs::File, io::AsyncWriteExt as _};
+
+use crate::CLIENT;
 
 use super::encrypt::eapi;
-use super::encrypt::linux_api;
 
 pub async fn eapi_request(url: &str, data: &str) -> Result<String, anyhow::Error> {
     Ok(CLIENT.post("http://interface.music.163.com/eapi/batch")
@@ -21,8 +16,8 @@ pub async fn eapi_request(url: &str, data: &str) -> Result<String, anyhow::Error
 }
 
 pub enum SearchTarget {
-    Singer,
-    Album,
+    // Singer,
+    // Album,
     Music,
     MusicList,
 }
@@ -31,9 +26,9 @@ impl SearchTarget {
     fn to_type(&self) -> u16 {
         match self {
             SearchTarget::Music => 1,
-            SearchTarget::Album => 10,
+            // SearchTarget::Album => 10,
             SearchTarget::MusicList => 1000,
-            SearchTarget::Singer => 100,
+            // SearchTarget::Singer => 100,
         }
     }
 }

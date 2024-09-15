@@ -1,4 +1,3 @@
-#![allow(non_snake_case)]
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -8,17 +7,19 @@ use crate::data::interface::playlist::Playlist;
 use crate::data::interface::server::MusicServer;
 use crate::server::netease::model::Model;
 use crate::server::netease::web_api::music_info::get_musics_info;
-use crate::server::{
-    netease::web_api::{
-        encrypt::linux_api,
-        request::{search, SearchTarget},
-    },
-    CLIENT,
+use crate::server::netease::web_api::{
+    encrypt::linux_api,
+    request::{search, SearchTarget},
 };
+use crate::CLIENT;
 use anyhow::Result;
 
 // 搜索歌单
-pub async fn search_netease_music_list(content: &str, page: u16, limit: u16) -> Result<Vec<Playlist>> {
+pub async fn search_netease_music_list(
+    content: &str,
+    page: u16,
+    limit: u16,
+) -> Result<Vec<Playlist>> {
     if page == 0 {
         return Err(anyhow::anyhow!("Page must be greater than 0"));
     }
@@ -318,7 +319,9 @@ async fn search_music_list_test() {
     let content = "张惠妹";
     let page = 1;
     let limit = 30;
-    let playlists = search_netease_music_list(content, page, limit).await.unwrap();
+    let playlists = search_netease_music_list(content, page, limit)
+        .await
+        .unwrap();
     println!("{:?}", playlists)
 }
 

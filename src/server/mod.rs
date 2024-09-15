@@ -2,26 +2,9 @@ use anyhow::Result;
 use kuwo::web_api::share_playlist::get_kuwo_music_list_from_share;
 use netease::web_api::share_playlist::get_netease_music_list_from_share;
 use std::sync::Arc;
-use std::sync::LazyLock;
-
-use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
-use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
 
 pub(crate) mod kuwo;
 pub(crate) mod netease;
-
-pub(crate) static CLIENT: LazyLock<ClientWithMiddleware> = LazyLock::new(|| {
-    ClientBuilder::new(
-        reqwest::Client::builder()
-            .danger_accept_invalid_certs(true)
-            .build()
-            .unwrap(),
-    )
-    .with(RetryTransientMiddleware::new_with_policy(
-        ExponentialBackoff::builder().build_with_max_retries(2),
-    ))
-    .build()
-});
 
 use crate::data::interface::server::MusicServer;
 

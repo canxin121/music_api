@@ -1,4 +1,4 @@
-use crate::{data::interface::quality::Quality, server::CLIENT};
+use crate::{data::interface::quality::Quality, CLIENT};
 
 #[allow(unused)]
 // todo: use this function in the code

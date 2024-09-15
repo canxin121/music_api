@@ -1,7 +1,4 @@
-use crate::{
-    data::interface::artist::Artist,
-    server::{kuwo, CLIENT},
-};
+use crate::{data::interface::artist::Artist, server::kuwo, CLIENT};
 
 use serde::{Deserialize, Serialize};
 

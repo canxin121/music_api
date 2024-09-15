@@ -1,6 +1,6 @@
 use crate::{
     data::interface::{playlist::Playlist, server::MusicServer},
-    server::{kuwo::web_api::utils::find_kuwo_plylist_id_from_share_url, CLIENT},
+    server::kuwo::web_api::utils::find_kuwo_plylist_id_from_share_url, CLIENT,
 };
 use anyhow::Result;
 use serde::{Deserialize, Serialize};

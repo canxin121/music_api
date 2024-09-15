@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::server::{netease::model::Model, CLIENT};
+use crate::{server::netease::model::Model, CLIENT};
 
 use super::{encrypt::weapi, music::Song};
 use anyhow::Result;

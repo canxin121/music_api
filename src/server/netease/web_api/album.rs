@@ -3,7 +3,7 @@ use serde_json::json;
 
 use crate::{
     data::interface::{playlist::Playlist, server::MusicServer},
-    server::{netease::model::Model, CLIENT},
+    server::netease::model::Model, CLIENT,
 };
 
 use super::{encrypt::weapi, music::Song};
