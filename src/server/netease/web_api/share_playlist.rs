@@ -33,7 +33,7 @@ pub async fn get_netease_music_list_from_share(share: &str) -> Result<Playlist> 
         .form(&linux_api(&data)).send().await;
 
     let resp = resp?.text().await?;
-    // std::fs::write("sample_data/netease/get_musics_from_music_list.json", &resp).unwrap();
+    // std::fs::write("sample_data/netease/share.json", &resp).unwrap();
     let result: GetPlaylistFromShareResult = serde_json::from_str(&resp)?;
 
     Ok(result.playlist.into())
@@ -41,7 +41,7 @@ pub async fn get_netease_music_list_from_share(share: &str) -> Result<Playlist> 
 
 #[tokio::test]
 async fn test_get_netease_music_list_from_share() {
-    let share = "分享Z殘心的歌单《米津玄师》https://y.music.163.com/m/playlist?app_version=8.9.20&id=6614178314&userid=317416193&dlt=0846&creatorId=317416193 (@网易云音乐)";
+    let share = "https://music.163.com/playlist?id=12497815913&uct2=U2FsdGVkX19tzJpiufgwqfBqjgNRIDask6O0auKK8SQ=";
     let playlist = get_netease_music_list_from_share(share).await.unwrap();
     println!("{:?}", playlist);
 }
@@ -88,7 +88,7 @@ pub struct GetMusicInnerPlaylist {
     // pub subscribed_count: i64,
     // pub cloud_track_count: i64,
     // pub ordered: bool,
-    pub description: String,
+    pub description: Option<String>,
     // pub tags: Vec<String>,
     // pub update_frequency: Value,
     // pub background_cover_id: i64,
@@ -134,7 +134,7 @@ impl Into<Playlist> for GetMusicInnerPlaylist {
             type_field: crate::data::interface::playlist::PlaylistType::UserPlaylist,
             identity: self.id.to_string(),
             name: self.name,
-            summary: Some(self.description),
+            summary: self.description,
             cover: self.cover_img_url,
             creator: Some(self.creator.nickname),
             creator_id: Some(self.creator.user_id.to_string()),

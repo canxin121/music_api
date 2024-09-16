@@ -1,5 +1,7 @@
 use crate::data::{
-    interface::{artist::ArtistVec, music_aggregator::Music, quality::QualityVec, server::MusicServer},
+    interface::{
+        artist::ArtistVec, music_aggregator::Music, quality::QualityVec, server::MusicServer,
+    },
     models::music_aggregator,
 };
 use anyhow::Result;
@@ -29,9 +31,9 @@ impl Model {
             name: self.name,
             album: self.album,
             album_id: self.album_id,
-            qualities: self.qualities,
+            qualities: self.qualities.0,
             cover: self.cover,
-            artists: self.artists,
+            artists: self.artists.0,
         }
     }
 }
@@ -42,10 +44,10 @@ impl From<Music> for Model {
             name: music.name,
             music_id: music.indentity,
             duration: music.duration,
-            artists: music.artists,
+            artists: music.artists.into(),
             album: music.album,
             album_id: music.album_id,
-            qualities: music.qualities,
+            qualities: music.qualities.into(),
             cover: music.cover,
         }
     }

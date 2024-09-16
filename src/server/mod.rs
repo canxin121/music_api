@@ -353,4 +353,16 @@ mod server_test {
         let share = Playlist::get_from_share("分享Z殘心的歌单《米津玄师》https://y.music.163.com/m/playlist?app_version=8.9.20&id=6614178314&userid=317416193&dlt=0846&creatorId=317416193 (@网易云音乐)").await.unwrap();
         println!("{:#?}", share);
     }
+
+    #[tokio::test]
+    async fn test_from_share2() {
+        let share = Playlist::get_from_share(
+            "https://music.163.com/playlist?id=12497815913&uct2=U2FsdGVkX19tzJpiufgwqfBqjgNRIDask6O0auKK8SQ=",
+        )
+        .await
+        .unwrap();
+        println!("{:#?}", share);
+        let music_aggs = share.fetch_musics_online(1, 2333).await.unwrap();
+        println!("{:#?}", music_aggs)
+    }
 }

@@ -8,7 +8,7 @@ use crate::{
     server::{kuwo, netease},
 };
 
-use super::{artist::ArtistVec, quality::QualityVec, server::MusicServer, utils::is_artist_equal};
+use super::{artist::Artist, quality::Quality, server::MusicServer, utils::is_artist_equal};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Music {
@@ -17,10 +17,10 @@ pub struct Music {
     pub indentity: String,
     pub name: String,
     pub duration: Option<i64>,
-    pub artists: ArtistVec,
+    pub artists: Vec<Artist>,
     pub album: Option<String>,
     pub album_id: Option<String>,
-    pub qualities: QualityVec,
+    pub qualities: Vec<Quality>,
     pub cover: Option<String>,
 }
 
@@ -44,7 +44,7 @@ impl Music {
                 active.name = Set(self.name.clone());
                 active.album = Set(self.album.clone());
                 active.album_id = Set(self.album_id.clone());
-                active.artists = Set(self.artists.clone());
+                active.artists = Set(self.artists.clone().into());
                 active.duration = Set(self.duration);
                 active.cover = Set(self.cover.clone());
 
@@ -57,7 +57,7 @@ impl Music {
                 active.name = Set(self.name.clone());
                 active.album = Set(self.album.clone());
                 active.album_id = Set(self.album_id.clone());
-                active.artists = Set(self.artists.clone());
+                active.artists = Set(self.artists.clone().into());
                 active.duration = Set(self.duration);
                 active.cover = Set(self.cover.clone());
 
