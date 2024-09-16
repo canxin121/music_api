@@ -1,15 +1,18 @@
 use sea_orm::entity::prelude::*;
 
 use crate::{
-    data::interface::{music_aggregator::MusicAggregator, server::MusicServer, utils::split_string},
+    data::interface::{
+        music_aggregator::MusicAggregator, server::MusicServer, utils::split_string,
+    },
     server::{kuwo, netease},
 };
 
-#[derive(Default, Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "music_aggregator")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub identity: String,
+    pub default_server: MusicServer,
     pub kuwo_music_id: Option<String>,
     pub netease_music_id: Option<String>,
 }

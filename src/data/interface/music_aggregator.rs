@@ -139,6 +139,42 @@ impl MusicAggregator {
         Ok(result)
     }
 
+    pub async fn change_default_server_in_db(
+        &mut self,
+        server: MusicServer,
+    ) -> Result<(), anyhow::Error> {
+        if !self.from_db {
+            return Err(anyhow::anyhow!(
+                "Can't change default server in non-database music aggregator"
+            ));
+        }
+
+        let db = get_db()
+            .await
+            .ok_or(anyhow::anyhow!("Database is not inited"))?;
+        let agg = music_aggregator::Entity::find_by_id(self.identity())
+            .one(&db)
+            .await?
+            .ok_or(anyhow::anyhow!("Music aggregator not found in db"))?;
+        match server {
+            MusicServer::Kuwo => {
+                if agg.kuwo_music_id.is_none() {
+                    return Err(anyhow::anyhow!("No Kuwo music in db"));
+                }
+            }
+            MusicServer::Netease => {
+                if agg.netease_music_id.is_none() {
+                    return Err(anyhow::anyhow!("No Netease music in db"));
+                }
+            }
+        }
+
+        let mut active = agg.into_active_model();
+        active.default_server = Set(server);
+        music_aggregator::Entity::update(active).exec(&db).await?;
+        Ok(())
+    }
+
     pub async fn find_in_db(name: String, artist: String) -> Option<Self> {
         let db = get_db()
             .await
@@ -193,6 +229,12 @@ impl MusicAggregator {
                 identity: Set(self.identity()),
                 kuwo_music_id: Set(kuwo_id),
                 netease_music_id: Set(netease_id),
+                default_server: Set(self
+                    .musics
+                    .first()
+                    .ok_or(anyhow::anyhow!("No music"))?
+                    .server
+                    .clone()),
             };
             music_aggregator::Entity::insert(agg)
                 .on_conflict_do_nothing()
@@ -323,12 +365,11 @@ impl MusicAggregator {
                         x.server == server
                             && x.name == self.name
                             && is_artist_equal(
-                                &x.artists
+                                x.artists
                                     .iter()
-                                    .map(|a| a.name.clone())
-                                    .collect::<Vec<String>>()
-                                    .join("&"),
-                                &self.artist,
+                                    .map(|a| a.name.as_str())
+                                    .collect::<Vec<&str>>(),
+                                self.artist.split('&').collect::<Vec<&str>>(),
                             )
                     }) {
                         self.musics.push(music.clone());

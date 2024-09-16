@@ -1,6 +1,4 @@
-pub(crate) fn is_artist_equal(one: &str, two: &str) -> bool {
-    let one = one.split('&').collect::<Vec<&str>>();
-    let two = two.split('&').collect::<Vec<&str>>();
+pub(crate) fn is_artist_equal(one: Vec<&str>, two: Vec<&str>) -> bool {
     if one.len() != two.len() {
         return false;
     }
