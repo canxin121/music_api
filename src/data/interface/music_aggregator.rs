@@ -142,7 +142,7 @@ impl MusicAggregator {
     }
 
     pub async fn change_default_server_in_db(
-        &mut self,
+        &self,
         server: MusicServer,
     ) -> Result<(), anyhow::Error> {
         if !self.from_db {
