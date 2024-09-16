@@ -106,6 +106,7 @@ pub struct MusicAggregator {
     pub artist: String,
     pub from_db: bool,
     pub musics: Vec<Music>,
+    pub default_server: MusicServer,
 }
 
 impl MusicAggregator {
@@ -123,6 +124,7 @@ impl MusicAggregator {
                 .collect::<Vec<String>>()
                 .join("&"),
             from_db: music.from_db,
+            default_server: music.server.clone(),
             musics: vec![music],
         }
     }
@@ -324,6 +326,7 @@ impl MusicAggregator {
                                     .collect::<Vec<String>>()
                                     .join("&"),
                                 from_db: false,
+                                default_server: music.server.clone(),
                                 musics: vec![music],
                             },
                         ),
@@ -484,6 +487,7 @@ mod test_music_aggregator {
             artist: "米津玄師".to_string(),
             from_db: false,
             musics: vec![],
+            default_server: MusicServer::Kuwo,
         };
         let servers = vec![MusicServer::Kuwo, MusicServer::Netease];
         let agg = agg.fetch_server_online(servers).await.unwrap();

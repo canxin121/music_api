@@ -80,6 +80,7 @@ impl Model {
             artist,
             from_db: true,
             musics,
+            default_server: self.default_server.clone(),
         };
         Ok(agg)
     }
