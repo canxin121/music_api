@@ -195,7 +195,7 @@ impl MusicAggregator {
         }
     }
 
-    pub async fn insert_to_db(&self) -> Result<(), anyhow::Error> {
+    pub async fn save_to_db(&self) -> Result<(), anyhow::Error> {
         if self.from_db {
             return Err(anyhow::anyhow!(
                 "Can't insert music aggregator from db into db."
@@ -427,7 +427,7 @@ mod test_music_aggregator {
         re_init_db().await;
         let aggs = do_search(vec![]).await;
         for agg in aggs {
-            agg.insert_to_db().await.unwrap();
+            agg.save_to_db().await.unwrap();
             println!("{:?}", agg);
         }
     }
@@ -438,11 +438,11 @@ mod test_music_aggregator {
         re_init_db().await;
         let aggs = do_search(vec![]).await;
         for agg in &aggs {
-            agg.insert_to_db().await.unwrap();
+            agg.save_to_db().await.unwrap();
         }
         let aggs = do_search(vec![]).await;
         for agg in aggs {
-            agg.insert_to_db().await.unwrap();
+            agg.save_to_db().await.unwrap();
             println!("{:?}", agg);
         }
     }
@@ -454,7 +454,7 @@ mod test_music_aggregator {
         re_init_db().await;
         let aggs = do_search(vec![]).await;
         for agg in &aggs {
-            agg.insert_to_db().await.unwrap();
+            agg.save_to_db().await.unwrap();
         }
 
         let inserted_agg = MusicAggregator::get_from_db().await.unwrap();
@@ -470,7 +470,7 @@ mod test_music_aggregator {
         re_init_db().await;
         let aggs = do_search(vec![]).await;
         for agg in &aggs {
-            agg.insert_to_db().await.unwrap();
+            agg.save_to_db().await.unwrap();
         }
 
         let inserted_agg = MusicAggregator::get_from_db().await.unwrap();

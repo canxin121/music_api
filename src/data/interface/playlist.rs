@@ -191,7 +191,7 @@ impl Playlist {
         let mut junctions = Vec::with_capacity(music_aggs.len());
 
         for music_agg in music_aggs {
-            music_agg.insert_to_db().await?;
+            music_agg.save_to_db().await?;
             let junction = playlist_music_junction::ActiveModel::new(
                 self.identity.parse::<i64>()?,
                 music_agg.identity(),
