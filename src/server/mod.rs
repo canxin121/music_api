@@ -71,7 +71,11 @@ impl Music {
 
     /// return the album playlist on first page, and musics on each page
     /// on some music server, the page and limit has no effect, they just return the all musics.
-    pub async fn get_album(&self, page: u16, limit: u16) -> Result<(Option<Playlist>, Vec<Music>)> {
+    pub async fn get_album(
+        &self,
+        page: u16,
+        limit: u16,
+    ) -> Result<(Option<Playlist>, Vec<MusicAggregator>)> {
         match self.server {
             MusicServer::Kuwo => {
                 let (album, musics) = kuwo::web_api::album::get_kuwo_music_album(
@@ -88,6 +92,7 @@ impl Music {
                 let musics = musics
                     .into_iter()
                     .map(|music| music.into_music(false))
+                    .map(|m| MusicAggregator::from_music(m))
                     .collect();
                 Ok((album, musics))
             }
@@ -101,6 +106,7 @@ impl Music {
                 let musics = musics
                     .into_iter()
                     .map(|music| music.into_music(false))
+                    .map(|m| MusicAggregator::from_music(m))
                     .collect();
                 Ok((Some(playlist), musics))
             }
