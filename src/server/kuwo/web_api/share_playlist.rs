@@ -1,6 +1,7 @@
 use crate::{
     data::interface::{playlist::Playlist, server::MusicServer},
-    server::kuwo::web_api::utils::find_kuwo_plylist_id_from_share_url, CLIENT,
+    server::kuwo::web_api::utils::find_kuwo_plylist_id_from_share_url,
+    CLIENT,
 };
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -57,6 +58,7 @@ impl Into<Playlist> for ShareMusicList {
             play_time: Some(self.playnum),
             music_num: Some(self.total),
             subscription: None,
+            order: None,
         }
     }
 }

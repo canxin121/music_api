@@ -102,6 +102,7 @@ impl Into<Playlist> for Album {
             play_time: None,
             music_num: Some(self.size),
             subscription: None,
+            order: None,
         }
     }
 }

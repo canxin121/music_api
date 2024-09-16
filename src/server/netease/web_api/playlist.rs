@@ -87,6 +87,7 @@ impl Into<Playlist> for NeteasePlaylist {
             play_time: Some(self.play_count),
             music_num: Some(self.track_count),
             subscription: None,
+            order: None,
         }
     }
 }

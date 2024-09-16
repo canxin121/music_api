@@ -1,10 +1,14 @@
 use std::collections::HashMap;
 
-use sea_orm::{EntityTrait, IntoActiveModel as _, Set};
+use sea_orm::{Condition, EntityTrait, IntoActiveModel as _, QueryFilter, Related, Set};
+use sea_query::Expr;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    data::{get_db, models::music_aggregator},
+    data::{
+        get_db,
+        models::{music_aggregator, playlist_music_junction},
+    },
     server::{kuwo, netease},
 };
 
@@ -105,6 +109,7 @@ pub struct MusicAggregator {
     pub name: String,
     pub artist: String,
     pub from_db: bool,
+    pub order: Option<i64>,
     pub musics: Vec<Music>,
     pub default_server: MusicServer,
 }
@@ -126,19 +131,8 @@ impl MusicAggregator {
             from_db: music.from_db,
             default_server: music.server.clone(),
             musics: vec![music],
+            order: None,
         }
-    }
-
-    pub async fn get_from_db() -> Result<Vec<Self>, anyhow::Error> {
-        let db = get_db()
-            .await
-            .ok_or(anyhow::anyhow!("Database is not inited"))?;
-        let aggs = music_aggregator::Entity::find().all(&db).await?;
-        let mut result = Vec::new();
-        for agg in aggs {
-            result.push(agg.get_music_aggregator(&db).await?);
-        }
-        Ok(result)
     }
 
     pub async fn change_default_server_in_db(
@@ -175,24 +169,6 @@ impl MusicAggregator {
         active.default_server = Set(server);
         music_aggregator::Entity::update(active).exec(&db).await?;
         Ok(())
-    }
-
-    pub async fn find_in_db(name: String, artist: String) -> Option<Self> {
-        let db = get_db()
-            .await
-            .ok_or(anyhow::anyhow!("Database is not inited"))
-            .ok()?;
-        let identity = format!("{}#+#{}", name, artist);
-        let agg = music_aggregator::Entity::find_by_id(identity)
-            .one(&db)
-            .await
-            .ok()?;
-
-        if let Some(agg) = agg {
-            agg.get_music_aggregator(&db).await.ok()
-        } else {
-            None
-        }
     }
 
     pub async fn save_to_db(&self) -> Result<(), anyhow::Error> {
@@ -248,6 +224,32 @@ impl MusicAggregator {
             music.insert_to_db().await?;
         }
         Ok(())
+    }
+
+    pub async fn update_order_to_db(&self, playlist_id: i64) -> Result<(), anyhow::Error> {
+        let db = get_db()
+            .await
+            .ok_or(anyhow::anyhow!("Database is not inited"))?;
+        let junction = playlist_music_junction::Entity::find()
+            .filter(
+                Condition::all()
+                    .add(
+                        Expr::col(playlist_music_junction::Column::MusicAggregatorId)
+                            .eq(self.identity()),
+                    )
+                    .add(Expr::col(playlist_music_junction::Column::PlaylistId).eq(playlist_id)),
+            )
+            .one(&db)
+            .await?
+            .ok_or(anyhow::anyhow!("Music aggregator not found in db"))?;
+
+        let mut active = junction.into_active_model();
+        active.order = Set(self.order.ok_or(anyhow::anyhow!("No order"))?);
+        playlist_music_junction::Entity::update(active)
+            .exec(&db)
+            .await?;
+
+        todo!()
     }
 
     pub async fn del_from_db(&self) -> Result<(), anyhow::Error> {
@@ -328,6 +330,7 @@ impl MusicAggregator {
                                 from_db: false,
                                 default_server: music.server.clone(),
                                 musics: vec![music],
+                                order: None,
                             },
                         ),
                     );
@@ -445,52 +448,5 @@ mod test_music_aggregator {
             agg.save_to_db().await.unwrap();
             println!("{:?}", agg);
         }
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn test_get() {
-        let _ = tracing_subscriber::fmt::try_init();
-        re_init_db().await;
-        let aggs = do_search(vec![]).await;
-        for agg in &aggs {
-            agg.save_to_db().await.unwrap();
-        }
-
-        let inserted_agg = MusicAggregator::get_from_db().await.unwrap();
-        for agg in inserted_agg {
-            println!("{:?}", agg);
-        }
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn test_del() {
-        let _ = tracing_subscriber::fmt::try_init();
-        re_init_db().await;
-        let aggs = do_search(vec![]).await;
-        for agg in &aggs {
-            agg.save_to_db().await.unwrap();
-        }
-
-        let inserted_agg = MusicAggregator::get_from_db().await.unwrap();
-        for agg in inserted_agg {
-            agg.del_from_db().await.unwrap();
-        }
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn test_fetch() {
-        let agg = MusicAggregator {
-            name: "Lemon".to_string(),
-            artist: "米津玄師".to_string(),
-            from_db: false,
-            musics: vec![],
-            default_server: MusicServer::Kuwo,
-        };
-        let servers = vec![MusicServer::Kuwo, MusicServer::Netease];
-        let agg = agg.fetch_server_online(servers).await.unwrap();
-        println!("{:?}", agg);
     }
 }

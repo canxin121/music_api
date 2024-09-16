@@ -4,7 +4,8 @@ use urlencoding::encode;
 
 use crate::{
     data::interface::{artist::Artist, playlist::Playlist, server::MusicServer},
-    server::kuwo, CLIENT,
+    server::kuwo,
+    CLIENT,
 };
 
 use super::utils::{get_music_rid_pic, parse_qualities_minfo};
@@ -115,6 +116,7 @@ impl Into<Playlist> for SearchMusicList {
             music_num: self.songnum.parse().ok(),
             subscription: None,
             from_db: false,
+            order: None,
         }
     }
 }

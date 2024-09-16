@@ -1,7 +1,7 @@
 use sea_orm::{
     ColumnTrait as _, Condition, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter, Set,
-    Unchanged,
 };
+use sea_query::Expr;
 use serde::{Deserialize, Serialize};
 
 use crate::data::{
@@ -10,7 +10,11 @@ use crate::data::{
 };
 use anyhow::Result;
 
-use super::{music_aggregator::MusicAggregator, playlist_subscription::{PlayListSubscription, PlayListSubscriptionVec}, server::MusicServer};
+use super::{
+    music_aggregator::MusicAggregator,
+    playlist_subscription::{PlayListSubscription, PlayListSubscriptionVec},
+    server::MusicServer,
+};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PlaylistType {
@@ -25,6 +29,7 @@ pub struct Playlist {
     #[serde(rename = "type")]
     pub type_field: PlaylistType,
     pub identity: String,
+    pub order: Option<i64>,
     pub name: String,
     pub summary: Option<String>,
     pub cover: Option<String>,
@@ -50,6 +55,7 @@ impl From<playlist::Model> for Playlist {
             play_time: None,
             music_num: None,
             subscription: value.subscriptions.and_then(|s| Some(s.0)),
+            order: Some(value.order),
         }
     }
 }
@@ -74,6 +80,7 @@ impl Playlist {
             play_time: None,
             music_num: None,
             subscription: Some(subscriptions),
+            order: None,
         }
     }
 
@@ -101,7 +108,7 @@ impl Playlist {
         if let Ok(id) = self.identity.parse::<i64>() {
             let playlist = playlist::ActiveModel {
                 id: Set(id),
-                order: Unchanged(0),
+                order: Set(self.order.unwrap_or(i64::MAX)),
                 name: Set(self.name.clone()),
                 summary: Set(self.summary.clone()),
                 cover: Set(self.cover.clone()),
@@ -219,17 +226,21 @@ impl Playlist {
             .await
             .ok_or(anyhow::anyhow!("Database is not inited."))?;
         let id = self.identity.parse::<i64>()?;
-        let playlist = playlist::Entity::find_by_id(id)
-            .one(&db)
-            .await?
-            .ok_or(anyhow::anyhow!("Can't find playlist in db"))?;
-        let aggs_links = playlist
-            .find_related(music_aggregator::Entity)
+        let junctions = playlist_music_junction::Entity::find()
+            .filter(
+                Condition::all().add(Expr::col(playlist_music_junction::Column::PlaylistId).eq(id)),
+            )
             .all(&db)
             .await?;
-        let mut aggs = Vec::with_capacity(aggs_links.len());
-        for agg_link in aggs_links {
-            aggs.push(agg_link.get_music_aggregator(&db).await?)
+
+        let mut aggs = Vec::with_capacity(junctions.len());
+        for junction in junctions {
+            let agg = junction
+                .find_related(music_aggregator::Entity)
+                .one(&db)
+                .await?
+                .ok_or(anyhow::anyhow!("Can't find music aggregator in db"))?;
+            aggs.push(agg.get_music_aggregator(&db, junction.order).await?);
         }
         Ok(aggs)
     }
@@ -245,7 +256,7 @@ mod test_playlist {
     use super::*;
     async fn re_init_db() {
         // 初始化log
-        // tracing_subscriber::fmt::init();
+        let _ = tracing_subscriber::fmt::try_init();
 
         let db_file = "./sample_data/test.db";
         let path = std::path::Path::new(db_file);

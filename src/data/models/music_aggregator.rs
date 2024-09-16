@@ -55,6 +55,7 @@ impl Model {
     pub async fn get_music_aggregator(
         &self,
         db: &DatabaseConnection,
+        order: i64,
     ) -> anyhow::Result<MusicAggregator> {
         let (name, artist) = split_string(&self.identity)?;
         let mut musics = Vec::with_capacity(MusicServer::length());
@@ -81,6 +82,7 @@ impl Model {
             from_db: true,
             musics,
             default_server: self.default_server.clone(),
+            order: Some(order),
         };
         Ok(agg)
     }

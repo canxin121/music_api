@@ -31,6 +31,7 @@ impl MigrationTrait for Migration {
                             .null()
                             .unique_key(),
                     )
+                    .col(ColumnDef::new(Column::DefaultServer).string().not_null())
                     .if_not_exists()
                     .to_owned(),
             )
