@@ -26,7 +26,7 @@ impl Model {
         Music {
             from_db,
             server: MusicServer::Netease,
-            indentity: self.music_id,
+            identity: self.music_id,
             duration: self.duration,
             name: self.name,
             album: self.album,
@@ -42,7 +42,7 @@ impl From<Music> for Model {
     fn from(music: Music) -> Self {
         Self {
             name: music.name,
-            music_id: music.indentity,
+            music_id: music.identity,
             duration: music.duration,
             artists: music.artists.into(),
             album: music.album,

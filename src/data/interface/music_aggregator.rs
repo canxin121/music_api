@@ -18,7 +18,7 @@ use super::{artist::Artist, quality::Quality, server::MusicServer, utils::is_art
 pub struct Music {
     pub from_db: bool,
     pub server: MusicServer,
-    pub indentity: String,
+    pub identity: String,
     pub name: String,
     pub duration: Option<i64>,
     pub artists: Vec<Artist>,
@@ -187,12 +187,12 @@ impl MusicAggregator {
             .musics
             .iter()
             .find(|x| x.server == MusicServer::Kuwo)
-            .and_then(|x| Some(x.indentity.clone()));
+            .and_then(|x| Some(x.identity.clone()));
         let netease_id = self
             .musics
             .iter()
             .find(|x| x.server == MusicServer::Netease)
-            .and_then(|x| Some(x.indentity.clone()));
+            .and_then(|x| Some(x.identity.clone()));
 
         if let Some(agg) = music_aggregator::Entity::find_by_id(self.identity())
             .one(&db)

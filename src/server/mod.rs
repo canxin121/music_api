@@ -275,9 +275,9 @@ impl Playlist {
 impl Music {
     pub async fn get_lyric(&self) -> Result<String> {
         match self.server {
-            MusicServer::Kuwo => kuwo::web_api::lyric::get_kuwo_lyric(&self.indentity).await,
+            MusicServer::Kuwo => kuwo::web_api::lyric::get_kuwo_lyric(&self.identity).await,
             MusicServer::Netease => {
-                netease::web_api::lyric::get_netease_lyric(&self.indentity).await
+                netease::web_api::lyric::get_netease_lyric(&self.identity).await
             }
         }
     }
