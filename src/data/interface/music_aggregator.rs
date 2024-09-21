@@ -211,7 +211,7 @@ impl MusicAggregator {
         }
 
         for music in &self.musics {
-            let _ = music.insert_to_db().await?;
+            let _ = music.insert_to_db().await;
         }
         Ok(())
     }
