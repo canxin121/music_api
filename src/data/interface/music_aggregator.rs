@@ -34,10 +34,6 @@ pub struct Music {
 impl Music {
     /// 允许外部调用更新音乐的功能
     pub async fn update_to_db(&self) -> anyhow::Result<Self> {
-        if !self.from_db {
-            return Err(anyhow::anyhow!("Music not from db, can't update"));
-        }
-
         let db = get_db()
             .await
             .ok_or(anyhow::anyhow!("Database is not inited"))?;
@@ -172,12 +168,6 @@ impl MusicAggregator {
     }
 
     pub async fn save_to_db(&self) -> Result<(), anyhow::Error> {
-        if self.from_db {
-            return Err(anyhow::anyhow!(
-                "Can't insert music aggregator from db into db."
-            ));
-        }
-
         let db = get_db()
             .await
             .ok_or(anyhow::anyhow!("Database is not inited"))?;
