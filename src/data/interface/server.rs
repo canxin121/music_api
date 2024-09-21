@@ -15,4 +15,10 @@ impl MusicServer {
         // todo: add more music server
         2
     }
+    pub fn to_string(&self) -> String {
+        match self {
+            MusicServer::Kuwo => "Kuwo".to_string(),
+            MusicServer::Netease => "Netease".to_string(),
+        }
+    }
 }
