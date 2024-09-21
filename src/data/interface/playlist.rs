@@ -172,7 +172,14 @@ impl Playlist {
             .await
             .ok_or(anyhow::anyhow!("Database is not inited."))?;
         let models = playlist::Entity::find().all(&db).await?;
-        Ok(models.into_iter().map(|m| m.into()).collect())
+        let mut playlists = models.into_iter().map(|m| m.into()).collect::<Vec<Self>>();
+        playlists.sort_by(|a, b| {
+            a.order
+                .unwrap_or(i64::MAX)
+                .cmp(&b.order.unwrap_or(i64::MAX))
+        });
+
+        Ok(playlists)
     }
 
     /// add playlist music aggregator junction to db
@@ -242,6 +249,7 @@ impl Playlist {
                 .ok_or(anyhow::anyhow!("Can't find music aggregator in db"))?;
             aggs.push(agg.get_music_aggregator(&db, junction.order).await?);
         }
+        aggs.sort_by(|a, b| a.order.cmp(&b.order));
         Ok(aggs)
     }
 }
