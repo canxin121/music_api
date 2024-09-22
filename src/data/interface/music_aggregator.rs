@@ -238,8 +238,7 @@ impl MusicAggregator {
         playlist_music_junction::Entity::update(active)
             .exec(&db)
             .await?;
-
-        todo!()
+        Ok(())
     }
 
     pub async fn del_from_db(&self) -> Result<(), anyhow::Error> {
