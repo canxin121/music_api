@@ -415,6 +415,38 @@ mod test_music_aggregator {
     }
 
     #[tokio::test]
+    pub async fn test_fetch_server_online() {
+        let aggs = MusicAggregator::search_online(
+            vec![],
+            vec![MusicServer::Netease],
+            "打上火花".to_string(),
+            1,
+            30,
+        )
+        .await
+        .unwrap();
+        let first = aggs.first().unwrap().clone();
+        println!("{:#?}", first);
+        let first = first
+            .fetch_server_online(vec![MusicServer::Kuwo])
+            .await
+            .unwrap();
+        println!("{:#?}", first);
+
+        let aggs = MusicAggregator::search_online(
+            vec![],
+            vec![MusicServer::Kuwo],
+            "打上火花".to_string(),
+            1,
+            30,
+        )
+        .await
+        .unwrap();
+        let first = aggs.first().unwrap().clone();
+        println!("{:#?}", first);
+    }
+
+    #[tokio::test]
     #[serial]
     async fn test_save() {
         re_init_db().await;

@@ -3,7 +3,7 @@ pub(crate) fn is_artist_equal(one: Vec<&str>, two: Vec<&str>) -> bool {
         return false;
     }
     for i in 0..one.len() {
-        if !two.contains(&one[i]) {
+        if !two.iter().any(|&s| s.eq_ignore_ascii_case(one[i])) {
             return false;
         }
     }
