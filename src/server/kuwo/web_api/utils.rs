@@ -40,8 +40,7 @@ pub fn parse_qualities_minfo(input: &str) -> Vec<Quality> {
     qualities
 }
 
-#[allow(unused)]
-fn parse_qualities_formats(formats: &str) -> Vec<Quality> {
+pub fn parse_qualities_formats(formats: &str) -> Vec<Quality> {
     let mut minfo = String::new();
     if formats.contains("HIRFLAC") {
         minfo += "level:hr,bitrate:4000,format:flac,size:unknown;"

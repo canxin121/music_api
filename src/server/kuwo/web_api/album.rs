@@ -11,7 +11,7 @@ use crate::{
     CLIENT,
 };
 
-use super::utils::get_music_rid_pic;
+use super::utils::{get_music_rid_pic, parse_qualities_formats};
 
 pub(crate) async fn get_kuwo_music_album(
     album_id: &str,
@@ -162,7 +162,7 @@ pub struct AlbumMusic {
     // pub content_type: String,
     // pub copyright: String,
     // pub fartist: String,
-    // pub formats: String,
+    pub formats: String,
     // pub fpay: String,
     // pub fsongname: String,
     pub id: String,
@@ -240,8 +240,14 @@ impl Into<crate::server::kuwo::model::Model> for AlbumMusic {
             artists,
             album: Some(self.album),
             album_id: Some(self.album_id),
-            qualities: Default::default(),
-            cover: self.cover,
+            qualities: parse_qualities_formats(&self.formats).into(),
+            cover: {
+                if self.cover.is_some() && self.cover.as_ref().unwrap().starts_with("NO_PIC") {
+                    self.cover.clone()
+                } else {
+                    None
+                }
+            },
             // artist_pic: build_web_artistpic_short(&self.web_artistpic_short),
             // album_pic: build_web_albumpic_short(&self.web_albumpic_short),
             duration: None,
