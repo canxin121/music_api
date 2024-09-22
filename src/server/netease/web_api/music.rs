@@ -157,7 +157,7 @@ impl Into<Model> for Song {
         Model {
             name: self.name,
             music_id: self.id.to_string(),
-            duration: Some(self.dt),
+            duration: Some(self.dt / 1000),
             artists: self
                 .ar
                 .into_iter()
