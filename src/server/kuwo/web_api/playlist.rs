@@ -8,7 +8,7 @@ use crate::{
     CLIENT,
 };
 
-use super::utils::{get_music_rid_pic, parse_qualities_minfo};
+use super::utils::{decode_html_entities, get_music_rid_pic, parse_qualities_minfo};
 
 pub async fn search_kuwo_music_list(content: &str, page: u32, limit: u32) -> Result<Vec<Playlist>> {
     let url = format!("http://search.kuwo.cn/r.s?all={}&pn={}&rn={limit}&rformat=json&encoding=utf8&ver=mbox&vipver=MUSIC_8.7.7.0_BCS37&plat=pc&devid=28156413&ft=playlist&pay=0&needliveshow=0",encode(content),page-1);
@@ -108,7 +108,7 @@ impl Into<Playlist> for SearchMusicList {
             type_field: crate::data::interface::playlist::PlaylistType::UserPlaylist,
             identity: self.playlistid,
             name: self.name,
-            summary: Some(self.intro),
+            summary: Some(decode_html_entities(self.intro)),
             cover: Some(self.pic),
             creator: Some(self.nickname),
             creator_id: None,

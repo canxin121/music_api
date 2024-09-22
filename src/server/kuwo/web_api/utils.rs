@@ -1,8 +1,6 @@
 use crate::{data::interface::quality::Quality, CLIENT};
 
-#[allow(unused)]
-// todo: use this function in the code
-fn decode_html_entities(input: String) -> String {
+pub fn decode_html_entities(input: String) -> String {
     input
         .replace("&nbsp;", " ")
         .replace("&amp;", "&")
