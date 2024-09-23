@@ -142,8 +142,8 @@ impl Playlist {
             Some(MusicServer::Netease) => self
                 .cover
                 .clone()
-                .map(|c| format!("{}?param={}y{}", c, size, size)),
-            _ => None,
+                .and_then(|c| Some(format!("{}?param={}y{}", c, size, size))),
+            None => self.cover.clone(),
         }
     }
 
