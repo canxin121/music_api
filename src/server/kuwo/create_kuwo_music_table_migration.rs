@@ -41,7 +41,6 @@ impl MigrationTrait for Migration {
                                 music_aggregator::Column::KuwoMusicId,
                             )
                             .on_delete(ForeignKeyAction::Cascade)
-                            .on_update(ForeignKeyAction::Cascade)
                     )
                     .if_not_exists()
                     .to_owned(),

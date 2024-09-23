@@ -39,7 +39,6 @@ impl MigrationTrait for Migration {
                                 music_aggregator::Column::NeteaseMusicId,
                             )
                             .on_delete(ForeignKeyAction::Cascade)
-                            .on_update(ForeignKeyAction::Cascade)
                     )
                     .if_not_exists()
                     .to_owned(),

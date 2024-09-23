@@ -34,7 +34,6 @@ impl MigrationTrait for Migration {
                             )
                             .to(PlaylistTable::Playlist, playlist::Column::Id)
                             .on_delete(ForeignKeyAction::Cascade)
-                            .on_update(ForeignKeyAction::Cascade),
                     )
                     .foreign_key(
                         ForeignKey::create()
@@ -47,7 +46,6 @@ impl MigrationTrait for Migration {
                                 music_aggregator::Column::Identity,
                             )
                             .on_delete(ForeignKeyAction::Cascade)
-                            .on_update(ForeignKeyAction::Cascade),
                     )
                     .if_not_exists()
                     .to_owned(),

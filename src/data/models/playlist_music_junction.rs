@@ -50,13 +50,11 @@ impl RelationTrait for Relation {
                 .from(Column::PlaylistId)
                 .to(super::playlist::Column::Id)
                 .on_delete(sea_query::ForeignKeyAction::Cascade)
-                .on_update(sea_query::ForeignKeyAction::Cascade)
                 .into(),
             Relation::MusicAggregator => Entity::belongs_to(super::music_aggregator::Entity)
                 .from(Column::MusicAggregatorId)
                 .to(super::music_aggregator::Column::Identity)
                 .on_delete(sea_query::ForeignKeyAction::Cascade)
-                .on_update(sea_query::ForeignKeyAction::Cascade)
                 .into(),
         }
     }

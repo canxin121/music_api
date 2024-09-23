@@ -44,7 +44,6 @@ impl RelationTrait for Relation {
                     .from(Column::Id)
                     .to(super::playlist_music_junction::Column::PlaylistId)
                     .on_delete(sea_query::ForeignKeyAction::Cascade)
-                    .on_update(sea_query::ForeignKeyAction::Cascade)
                     .into()
             }
         }

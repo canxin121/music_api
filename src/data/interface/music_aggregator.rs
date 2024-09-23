@@ -188,7 +188,7 @@ impl MusicAggregator {
             .one(&db)
             .await?
         {
-            let mut active = agg.into_active_model();
+            let mut active: music_aggregator::ActiveModel = agg.into_active_model();
             active.kuwo_music_id = Set(kuwo_id);
             active.netease_music_id = Set(netease_id);
             music_aggregator::Entity::update(active).exec(&db).await?;
