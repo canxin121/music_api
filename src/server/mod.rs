@@ -129,6 +129,24 @@ mod server_music_test {
 }
 
 impl Playlist {
+    pub fn get_cover(&self, size: u16) -> Option<String> {
+        match self.server {
+            Some(MusicServer::Kuwo) => self.cover.clone().and_then(|cover| {
+                Some(
+                    cover
+                        .replace("_700.", &format!("_{}.", size))
+                        .replace("_150.", &format!("_{}.", size))
+                        .replace("/240/", &format!("/{}/", size)),
+                )
+            }),
+            Some(MusicServer::Netease) => self
+                .cover
+                .clone()
+                .map(|c| format!("{}?param={}y{}", c, size, size)),
+            _ => None,
+        }
+    }
+
     /// Search playlist online
     pub async fn search_online(
         servers: Vec<MusicServer>,
@@ -281,11 +299,31 @@ impl Music {
             }
         }
     }
+
+    pub fn get_cover(&self, size: u16) -> Option<String> {
+        match self.server {
+            MusicServer::Kuwo => self.cover.clone().and_then(|cover| {
+                Some(
+                    cover
+                        .replace("_700.", &format!("_{}.", size))
+                        .replace("/500/", &format!("/{}/", size)),
+                )
+            }),
+            MusicServer::Netease => self
+                .cover
+                .clone()
+                .and_then(|c| Some(format!("{c}?param={size}y{size}"))),
+        }
+    }
 }
 
 #[cfg(test)]
 mod server_test {
-    use crate::data::interface::playlist::Playlist;
+    use crate::data::interface::{
+        music_aggregator::Music, playlist::Playlist, server::MusicServer,
+    };
+
+    use super::kuwo::web_api::playlist;
 
     #[tokio::test]
     async fn test_search() {
@@ -370,5 +408,74 @@ mod server_test {
         println!("{:#?}", share);
         let music_aggs = share.fetch_musics_online(1, 2333).await.unwrap();
         println!("{:#?}", music_aggs)
+    }
+
+    #[tokio::test]
+    async fn test_get_cover() {
+        let musics = Music::search_online(
+            vec![MusicServer::Kuwo, MusicServer::Netease],
+            "米津玄师".to_string(),
+            1,
+            10,
+        )
+        .await
+        .unwrap();
+        for music in &musics {
+            if let Some(cover) = music.get_cover(100) {
+                println!("{}", cover);
+                assert!(cover.contains("100"));
+            }
+        }
+
+        let first_kuwo = musics
+            .iter()
+            .find(|m| m.server == MusicServer::Kuwo && m.album_id.is_some())
+            .unwrap();
+
+        let (kuwo_album, music_aggs) = first_kuwo.get_album(1, 10).await.unwrap();
+
+        if let Some(cover) = kuwo_album.unwrap().get_cover(100) {
+            println!("{}", cover);
+            assert!(cover.contains("100"));
+        }
+
+        for music_agg in &music_aggs {
+            if let Some(cover) = music_agg.musics.first().unwrap().get_cover(100) {
+                assert!(cover.contains("100"));
+            }
+        }
+
+        let first_netease = musics
+            .iter()
+            .find(|m| m.server == MusicServer::Netease && m.album_id.is_some())
+            .unwrap();
+
+        let (netease_album, music_aggs) = first_netease.get_album(1, 10).await.unwrap();
+
+        if let Some(cover) = netease_album.unwrap().get_cover(100) {
+            assert!(cover.contains("100"));
+        }
+
+        for music_agg in &music_aggs {
+            if let Some(cover) = music_agg.musics.first().unwrap().get_cover(100) {
+                assert!(cover.contains("100"));
+            }
+        }
+
+        let playlists = Playlist::search_online(
+            vec![MusicServer::Kuwo, MusicServer::Netease],
+            "米津玄师".to_string(),
+            1,
+            30,
+        )
+        .await
+        .unwrap();
+
+        for playlist in &playlists {
+            if let Some(cover) = playlist.get_cover(100) {
+                println!("{}", cover);
+                assert!(cover.contains("100"));
+            }
+        }
     }
 }

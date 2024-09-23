@@ -384,7 +384,7 @@ mod test_music_aggregator {
 
     use crate::data::{
         get_db,
-        interface::{music_aggregator::MusicAggregator, server::MusicServer},
+        interface::{music_aggregator::MusicAggregator, playlist::Playlist, server::MusicServer},
         migrations::Migrator,
         set_db,
     };
@@ -453,6 +453,22 @@ mod test_music_aggregator {
         for agg in aggs {
             agg.save_to_db().await.unwrap();
             println!("{:?}", agg);
+        }
+        let playlists = Playlist::search_online(
+            vec![MusicServer::Kuwo, MusicServer::Netease],
+            "米津玄师".to_string(),
+            1,
+            5,
+        )
+        .await
+        .unwrap();
+
+        for playlist in playlists {
+            let aggs = playlist.fetch_musics_online(1, 2333).await.unwrap();
+            for agg in aggs {
+                agg.save_to_db().await.unwrap();
+                println!("{:?}", agg);
+            }
         }
     }
 

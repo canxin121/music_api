@@ -15,6 +15,9 @@ impl MusicServer {
         // todo: add more music server
         2
     }
+    pub fn all() -> Vec<MusicServer> {
+        vec![MusicServer::Kuwo, MusicServer::Netease]
+    }
     pub fn to_string(&self) -> String {
         match self {
             MusicServer::Kuwo => "Kuwo".to_string(),
