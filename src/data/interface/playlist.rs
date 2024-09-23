@@ -13,6 +13,7 @@ use anyhow::Result;
 use super::{
     music_aggregator::MusicAggregator,
     playlist_subscription::{PlayListSubscription, PlayListSubscriptionVec},
+    results::PlaylistUpdateSubscriptionResult,
     server::MusicServer,
 };
 
@@ -251,6 +252,61 @@ impl Playlist {
         }
         aggs.sort_by(|a, b| a.order.cmp(&b.order));
         Ok(aggs)
+    }
+
+    pub async fn update_subscription(&self) -> Result<PlaylistUpdateSubscriptionResult> {
+        if !self.from_db {
+            return Err(anyhow::anyhow!(
+                "Can't update subscription for non-database playlist"
+            ));
+        }
+
+        if self.subscription.is_none() || self.subscription.as_ref().unwrap().is_empty() {
+            return Err(anyhow::anyhow!(
+                "The playlist has no subscription to update"
+            ));
+        }
+
+        let subscriptions = self.subscription.clone().unwrap();
+        let mut handles: Vec<tokio::task::JoinHandle<Result<Vec<MusicAggregator>>>> =
+            Vec::with_capacity(subscriptions.len());
+
+        for subscription in subscriptions {
+            handles.push(tokio::spawn(async move {
+                let playlist = Playlist::get_from_share(&subscription.share).await?;
+                let musics = playlist.fetch_musics_online(1, 2333).await?;
+                Ok(musics)
+            }));
+        }
+        let mut result = PlaylistUpdateSubscriptionResult {
+            errors: Vec::with_capacity((handles.len() / 2).max(1)),
+        };
+
+        for (handle, subscription) in handles.into_iter().zip(self.subscription.as_ref().unwrap()) {
+            match handle.await {
+                Ok(fetch_result) => match fetch_result {
+                    Ok(aggs) => match self.add_aggs_to_db(&aggs).await {
+                        Ok(_) => {}
+                        Err(e) => {
+                            result
+                                .errors
+                                .push((subscription.name.to_string(), e.to_string()));
+                        }
+                    },
+                    Err(e) => {
+                        result
+                            .errors
+                            .push((subscription.name.to_string(), e.to_string()));
+                    }
+                },
+                Err(e) => {
+                    result
+                        .errors
+                        .push((subscription.name.to_string(), e.to_string()));
+                }
+            }
+        }
+        Ok(result)
     }
 }
 

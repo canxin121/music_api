@@ -5,3 +5,4 @@ pub mod quality;
 pub mod server;
 pub mod utils;
 pub mod playlist_subscription;
+pub mod results;
