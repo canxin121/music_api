@@ -107,7 +107,7 @@ impl Into<Playlist> for SearchMusicList {
             server: Some(MusicServer::Kuwo),
             type_field: crate::data::interface::playlist::PlaylistType::UserPlaylist,
             identity: self.playlistid,
-            name: self.name,
+            name: decode_html_entities(self.name),
             summary: Some(decode_html_entities(self.intro)),
             cover: Some(self.pic),
             creator: Some(self.nickname),
