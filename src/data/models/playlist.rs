@@ -1,6 +1,4 @@
-use crate::
-    data::interface::playlist_subscription::PlayListSubscriptionVec
-;
+use crate::data::interface::playlist_subscription::PlayListSubscriptionVec;
 use anyhow::Result;
 use sea_orm::{entity::prelude::*, ActiveValue::NotSet, Set};
 
@@ -19,13 +17,19 @@ pub struct Model {
 }
 
 impl ActiveModel {
-    pub fn new(name: String, summary: Option<String>, cover: Option<String>, order: i64) -> Self {
+    pub fn new(
+        name: String,
+        summary: Option<String>,
+        cover: Option<String>,
+        order: i64,
+        subscriptions: Option<PlayListSubscriptionVec>,
+    ) -> Self {
         Self {
             id: NotSet,
             name: Set(name),
             summary: Set(summary),
             cover: Set(cover),
-            subscriptions: (Default::default()),
+            subscriptions: Set(subscriptions),
             order: Set(order),
         }
     }

@@ -141,6 +141,9 @@ impl Playlist {
             self.summary.clone(),
             self.cover.clone(),
             order as i64,
+            self.subscription
+                .clone()
+                .and_then(|s| Some(PlayListSubscriptionVec(s))),
         );
 
         let last_id = playlist::Entity::insert(playlist)
@@ -446,5 +449,26 @@ mod test_playlist {
         let music_aggs = playlist.get_musics_from_db().await.unwrap();
         println!("{:?}", music_aggs);
         println!("Length: {}", music_aggs.len());
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_update_subscription() {
+        re_init_db().await;
+        let playlist = Playlist::new(
+            "test".to_string(),
+            None,
+            None,
+            vec![PlayListSubscription {
+                name: "1".to_string(),
+                share: "分享Z殘心的歌单《米津玄师》https://y.music.163.com/m/playlist?app_version=8.9.20&id=6614178314&userid=317416193&dlt=0846&creatorId=317416193 (@网易云音乐)".to_string(),
+            }],
+        );
+        let playlist_id = playlist.insert_to_db().await.unwrap();
+        let playlist = Playlist::find_in_db(playlist_id).await.unwrap();
+        let result = playlist.update_subscription().await.unwrap();
+        println!("{:?}", result);
+        let reuslt = playlist.update_subscription().await.unwrap();
+        println!("{:?}", reuslt);
     }
 }
