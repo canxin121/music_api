@@ -1,10 +1,38 @@
+use std::{path::PathBuf, str::FromStr};
+
 use sea_orm::{Database, DatabaseConnection};
 use sea_orm_migration::MigratorTrait as _;
 
 use crate::{data::migrations::Migrator, DB_POOL};
 
+pub async fn create_sqlite_db_file(database_url: &str) -> Result<(), anyhow::Error> {
+    let db_file: PathBuf = PathBuf::from_str(database_url.split("///").last().ok_or(
+        anyhow::anyhow!("Invalid database url, use 'sqlite:///path/to/database.db'"),
+    )?)?;
+
+    if db_file.parent().is_none() {
+        tokio::fs::create_dir_all(db_file.parent().unwrap())
+            .await
+            .map_err(|e| {
+                anyhow::anyhow!(
+                    "Failed to create parent directory when create sqlite db file: {}",
+                    e
+                )
+            })?;
+    };
+
+    if !db_file.exists() {
+        tokio::fs::File::create(db_file).await?;
+    }
+    Ok(())
+}
+
 pub async fn set_db(database_url: &str) -> Result<(), anyhow::Error> {
     close_db().await?;
+    
+    if database_url.starts_with("sqlite") {
+        create_sqlite_db_file(database_url).await?;
+    }
 
     let db_connection = Database::connect(database_url).await?;
 
