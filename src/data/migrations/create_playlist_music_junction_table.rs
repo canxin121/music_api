@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use sea_orm_migration::{
     prelude::*,
-    schema::{big_integer, string, unsigned},
+    schema::{big_integer, string},
 };
 
 use crate::data::models::{music_aggregator, playlist, playlist_music_junction::Column};

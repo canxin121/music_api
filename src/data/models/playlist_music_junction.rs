@@ -1,4 +1,5 @@
 use sea_orm::{entity::prelude::*, Set};
+use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
 pub struct Entity;
@@ -9,7 +10,7 @@ impl EntityName for Entity {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, DeriveModel, DeriveActiveModel)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveModel, DeriveActiveModel, Serialize, Deserialize)]
 pub struct Model {
     pub playlist_id: i64,
     pub music_aggregator_id: String,

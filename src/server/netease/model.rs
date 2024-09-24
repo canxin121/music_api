@@ -6,8 +6,9 @@ use crate::data::{
 };
 use anyhow::Result;
 use sea_orm::entity::prelude::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Default, Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[derive(Default, Clone, Serialize, Deserialize, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "netease_music")]
 pub struct Model {
     pub name: String,

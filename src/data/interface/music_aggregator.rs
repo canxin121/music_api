@@ -110,7 +110,7 @@ pub struct MusicAggregator {
 
 impl MusicAggregator {
     pub fn identity(&self) -> String {
-        format!("{}#+#{}", self.name, self.artist)
+        format!("{}#+#{}", self.name, self.artist).to_lowercase()
     }
 
     pub fn from_music(music: Music) -> Self {
@@ -271,6 +271,7 @@ impl MusicAggregator {
         if servers.is_empty() {
             return Err((aggs, "No servers provided".to_string()));
         }
+        
         let mut map = {
             if !aggs.is_empty() {
                 let pair = aggs
@@ -302,7 +303,8 @@ impl MusicAggregator {
                         .map(|x| x.name.clone())
                         .collect::<Vec<String>>()
                         .join("&")
-                );
+                )
+                .to_lowercase();
                 if let Some(pair) = map.get_mut(&identity) {
                     if !pair.1.musics.iter().any(|x| x.server == music.server) {
                         pair.1.musics.push(music);

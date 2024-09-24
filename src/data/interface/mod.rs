@@ -1,9 +1,10 @@
 pub mod artist;
+pub mod database;
+pub mod json;
 pub mod music_aggregator;
 pub mod playlist;
+pub mod playlist_subscription;
 pub mod quality;
+pub mod results;
 pub mod server;
 pub mod utils;
-pub mod playlist_subscription;
-pub mod results;
-pub mod database;

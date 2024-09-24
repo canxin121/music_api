@@ -1,4 +1,5 @@
 use sea_orm::entity::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     data::interface::{
@@ -7,7 +8,7 @@ use crate::{
     server::{kuwo, netease},
 };
 
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "music_aggregator")]
 pub struct Model {
     #[sea_orm(primary_key)]

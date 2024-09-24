@@ -1,8 +1,9 @@
 use crate::data::interface::playlist_subscription::PlayListSubscriptionVec;
 use anyhow::Result;
 use sea_orm::{entity::prelude::*, ActiveValue::NotSet, Set};
+use serde::{Deserialize, Serialize};
 
-#[derive(Default, Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[derive(Default, Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "playlist")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = true)]
