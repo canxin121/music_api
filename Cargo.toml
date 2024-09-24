@@ -32,17 +32,18 @@ reqwest-middleware = "0.3.3"
 reqwest-retry = "0.6.1"
 rsa = { version = "0.9.6", features = ["hazmat"] }
 sea-orm = { version = "1.0.1", default-features = false, features = [
-    "sqlx-sqlite",
+    "sqlx-all",
     "runtime-tokio-rustls",
     "serde_json",
     "with-json",
 ] }
 sea-orm-migration = { version = "1.0.1", features = [
+    "sqlx-mysql",
+    "sqlx-postgres",
     "sqlx-sqlite",
     "runtime-tokio-rustls",
 ], default-features = false }
-sea-query = { version = "0.31.0" }
-sea-query-binder = { version = "0.6.0", features = ["sqlx-any", "sqlx-sqlite"] }
+
 serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
 sha2 = "0.10.8"

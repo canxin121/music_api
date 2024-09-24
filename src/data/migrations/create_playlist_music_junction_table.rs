@@ -1,5 +1,8 @@
 use async_trait::async_trait;
-use sea_orm_migration::{prelude::*, schema::{integer, string}};
+use sea_orm_migration::{
+    prelude::*,
+    schema::{big_integer, string, unsigned},
+};
 
 use crate::data::models::{music_aggregator, playlist, playlist_music_junction::Column};
 
@@ -17,9 +20,9 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(PlaylistMusicJunctionTable::PlaylistMusicJunction)
-                    .col(integer(Column::PlaylistId))
+                    .col(big_integer(Column::PlaylistId).not_null())
                     .col(string(Column::MusicAggregatorId))
-                    .col(integer(Column::Order))
+                    .col(big_integer(Column::Order).not_null())
                     .primary_key(
                         Index::create()
                             .table(PlaylistMusicJunctionTable::PlaylistMusicJunction)
@@ -33,7 +36,7 @@ impl MigrationTrait for Migration {
                                 Column::PlaylistId,
                             )
                             .to(PlaylistTable::Playlist, playlist::Column::Id)
-                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_delete(ForeignKeyAction::Cascade),
                     )
                     .foreign_key(
                         ForeignKey::create()
@@ -45,7 +48,7 @@ impl MigrationTrait for Migration {
                                 MusicAggregatorTable::MusicAggragator,
                                 music_aggregator::Column::Identity,
                             )
-                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_delete(ForeignKeyAction::Cascade),
                     )
                     .if_not_exists()
                     .to_owned(),

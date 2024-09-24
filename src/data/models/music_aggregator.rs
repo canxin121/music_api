@@ -31,18 +31,18 @@ impl RelationTrait for Relation {
                 Entity::has_many(super::playlist_music_junction::Entity)
                     .from(Column::Identity)
                     .to(super::playlist_music_junction::Column::MusicAggregatorId)
-                    .on_delete(sea_query::ForeignKeyAction::Cascade)
+                    .on_delete(ForeignKeyAction::Cascade)
                     .into()
             }
             Relation::KuwoMusic => Entity::has_one(crate::server::kuwo::model::Entity)
                 .from(Column::KuwoMusicId)
                 .to(crate::server::kuwo::model::Column::MusicId)
-                .on_delete(sea_query::ForeignKeyAction::Cascade)
+                .on_delete(ForeignKeyAction::Cascade)
                 .into(),
             Relation::NeteaseMusicId => Entity::has_one(crate::server::netease::model::Entity)
                 .from(Column::NeteaseMusicId)
                 .to(crate::server::netease::model::Column::MusicId)
-                .on_delete(sea_query::ForeignKeyAction::Cascade)
+                .on_delete(ForeignKeyAction::Cascade)
                 .into(),
         }
     }

@@ -17,8 +17,8 @@ impl Music {
     pub async fn search_online(
         servers: Vec<MusicServer>,
         content: String,
-        page: u32,
-        size: u32,
+        page: i64,
+        size: i64,
     ) -> Result<Vec<Music>> {
         let mut handles: Vec<tokio::task::JoinHandle<Vec<Music>>> =
             Vec::with_capacity(MusicServer::length());
@@ -45,8 +45,8 @@ impl Music {
                 MusicServer::Netease => handles.push(tokio::spawn(async move {
                     match netease::web_api::music::search_netease_music(
                         content.as_ref(),
-                        page as u16,
-                        size as u16,
+                        page,
+                        size,
                     )
                     .await
                     {
@@ -151,8 +151,8 @@ impl Playlist {
     pub async fn search_online(
         servers: Vec<MusicServer>,
         content: String,
-        page: u32,
-        size: u32,
+        page: i64,
+        size: i64,
     ) -> Result<Vec<Playlist>> {
         if servers.is_empty() {
             return Err(anyhow::anyhow!("No server specified"));
@@ -177,8 +177,8 @@ impl Playlist {
                     handles.push(tokio::spawn(async move {
                         netease::web_api::playlist::search_netease_music_list(
                             content.as_str(),
-                            page as u16,
-                            size as u16,
+                            page,
+                            size,
                         )
                         .await
                     }));
@@ -322,8 +322,6 @@ mod server_test {
     use crate::data::interface::{
         music_aggregator::Music, playlist::Playlist, server::MusicServer,
     };
-
-    use super::kuwo::web_api::playlist;
 
     #[tokio::test]
     async fn test_search() {

@@ -6,8 +6,8 @@ use super::utils::{get_music_rid_pic, parse_qualities_minfo};
 
 pub async fn search_kuwo_musics(
     content: &str,
-    page: u32,
-    limit: u32,
+    page: i64,
+    limit: i64,
 ) -> Result<Vec<kuwo::model::Model>, anyhow::Error> {
     if page == 0 {
         return Err(anyhow::anyhow!("page must be greater than 0"));

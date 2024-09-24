@@ -10,8 +10,8 @@ use crate::{
 
 pub async fn search_netease_music(
     content: &str,
-    page: u16,
-    limit: u16,
+    page: i64,
+    limit: i64,
 ) -> Result<Vec<Model>, anyhow::Error> {
     let resp = search(SearchTarget::Music, content, page, limit).await?;
     // std::fs::write("sample_data/netease/search_music.json", resp)

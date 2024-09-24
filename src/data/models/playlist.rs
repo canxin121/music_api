@@ -47,7 +47,7 @@ impl RelationTrait for Relation {
                 Entity::has_many(super::playlist_music_junction::Entity)
                     .from(Column::Id)
                     .to(super::playlist_music_junction::Column::PlaylistId)
-                    .on_delete(sea_query::ForeignKeyAction::Cascade)
+                    .on_delete(ForeignKeyAction::Cascade)
                     .into()
             }
         }

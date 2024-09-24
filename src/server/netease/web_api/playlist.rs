@@ -17,8 +17,8 @@ use anyhow::Result;
 // 搜索歌单
 pub async fn search_netease_music_list(
     content: &str,
-    page: u16,
-    limit: u16,
+    page: i64,
+    limit: i64,
 ) -> Result<Vec<Playlist>> {
     if page == 0 {
         return Err(anyhow::anyhow!("Page must be greater than 0"));

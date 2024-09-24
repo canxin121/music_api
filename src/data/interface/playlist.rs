@@ -1,16 +1,14 @@
 use sea_orm::{
-    ColumnTrait as _, Condition, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter, Set,
+    prelude::Expr, ColumnTrait as _, Condition, EntityTrait,
+    ModelTrait, PaginatorTrait, QueryFilter, Set,
 };
-use sea_query::Expr;
 use serde::{Deserialize, Serialize};
 
-use crate::data::{
-    get_db,
-    models::{music_aggregator, playlist, playlist_music_junction},
-};
+use crate::data::models::{music_aggregator, playlist, playlist_music_junction};
 use anyhow::Result;
 
 use super::{
+    database::get_db,
     music_aggregator::MusicAggregator,
     playlist_subscription::{PlayListSubscription, PlayListSubscriptionVec},
     results::PlaylistUpdateSubscriptionResult,
@@ -145,11 +143,13 @@ impl Playlist {
                 .clone()
                 .and_then(|s| Some(PlayListSubscriptionVec(s))),
         );
+        // let statement = playlist::Entity::insert(playlist.clone())
+        //     .as_query()
+        //     .to_string(PostgresQueryBuilder);
+        // println!("Statement: {}", statement);
 
-        let last_id = playlist::Entity::insert(playlist)
-            .exec(&db)
-            .await?
-            .last_insert_id;
+        let result = playlist::Entity::insert(playlist).exec(&db).await?;
+        let last_id = result.last_insert_id;
         Ok(last_id)
     }
 
@@ -318,7 +318,7 @@ mod test_playlist {
     use sea_orm_migration::MigratorTrait as _;
     use serial_test::serial;
 
-    use crate::data::{migrations::Migrator, set_db};
+    use crate::data::{interface::database::set_db, migrations::Migrator};
 
     use super::*;
     async fn re_init_db() {

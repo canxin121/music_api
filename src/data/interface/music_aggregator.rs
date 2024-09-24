@@ -1,18 +1,16 @@
 use std::collections::HashMap;
 
-use sea_orm::{Condition, EntityTrait, IntoActiveModel as _, QueryFilter, Related, Set};
-use sea_query::Expr;
+use sea_orm::{prelude::Expr, Condition, EntityTrait, IntoActiveModel as _, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    data::{
-        get_db,
-        models::{music_aggregator, playlist_music_junction},
-    },
+    data::models::{music_aggregator, playlist_music_junction},
     server::{kuwo, netease},
 };
 
-use super::{artist::Artist, quality::Quality, server::MusicServer, utils::is_artist_equal};
+use super::{
+    artist::Artist, database::get_db, quality::Quality, server::MusicServer, utils::is_artist_equal,
+};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Music {
@@ -178,6 +176,7 @@ impl MusicAggregator {
             .iter()
             .find(|x| x.server == MusicServer::Kuwo)
             .and_then(|x| Some(x.identity.clone()));
+
         let netease_id = self
             .musics
             .iter()
@@ -188,9 +187,15 @@ impl MusicAggregator {
             .one(&db)
             .await?
         {
+            let should_update_kuwo = kuwo_id.is_some() && agg.kuwo_music_id.is_none();
+            let should_update_netease = netease_id.is_some() && agg.netease_music_id.is_none();
             let mut active: music_aggregator::ActiveModel = agg.into_active_model();
-            active.kuwo_music_id = Set(kuwo_id);
-            active.netease_music_id = Set(netease_id);
+            if should_update_kuwo {
+                active.kuwo_music_id = Set(kuwo_id);
+            }
+            if should_update_netease {
+                active.netease_music_id = Set(netease_id);
+            }
             music_aggregator::Entity::update(active).exec(&db).await?;
         } else {
             let agg = music_aggregator::ActiveModel {
@@ -260,8 +265,8 @@ impl MusicAggregator {
         aggs: Vec<MusicAggregator>,
         servers: Vec<MusicServer>,
         content: String,
-        page: u32,
-        size: u32,
+        page: i64,
+        size: i64,
     ) -> Result<Vec<Self>, (Vec<Self>, String)> {
         if servers.is_empty() {
             return Err((aggs, "No servers provided".to_string()));
@@ -383,10 +388,13 @@ mod test_music_aggregator {
     use serial_test::serial;
 
     use crate::data::{
-        get_db,
-        interface::{music_aggregator::MusicAggregator, playlist::Playlist, server::MusicServer},
+        interface::{
+            database::{get_db, set_db},
+            music_aggregator::MusicAggregator,
+            playlist::Playlist,
+            server::MusicServer,
+        },
         migrations::Migrator,
-        set_db,
     };
 
     async fn re_init_db() {

@@ -1,10 +1,12 @@
 pub mod data;
 mod server;
 
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
+use sea_orm::DatabaseConnection;
+use tokio::sync::RwLock;
 
 pub static CLIENT: LazyLock<ClientWithMiddleware> = LazyLock::new(|| {
     ClientBuilder::new(
@@ -18,3 +20,6 @@ pub static CLIENT: LazyLock<ClientWithMiddleware> = LazyLock::new(|| {
     ))
     .build()
 });
+
+static DB_POOL: LazyLock<Arc<RwLock<Option<DatabaseConnection>>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(None)));

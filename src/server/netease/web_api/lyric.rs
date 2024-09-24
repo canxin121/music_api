@@ -8,7 +8,7 @@ struct LyricResult {
 #[derive(Deserialize)]
 struct Lrc {
     #[allow(unused)]
-    version: u32,
+    version: i64,
     lyric: String,
 }
 
@@ -18,13 +18,13 @@ struct ItemOfC {
 }
 #[derive(Deserialize)]
 struct MapPart {
-    t: u32,
+    t: i64,
     c: Vec<ItemOfC>,
 }
 
 impl MapPart {
     fn parse(self) -> String {
-        fn format_lrc_timestamp(milliseconds: u32) -> String {
+        fn format_lrc_timestamp(milliseconds: i64) -> String {
             // 将毫秒转换为分钟、秒和百分之一秒
             let minutes = milliseconds / 60000;
             let seconds = (milliseconds % 60000) / 1000;

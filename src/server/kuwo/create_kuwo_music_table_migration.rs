@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use sea_orm_migration::{
     prelude::*,
-    schema::{integer_null, string, string_null},
+    schema::{big_integer_null, json, string, string_null},
 };
 
 use crate::data::{migrations::create_music_aggregator_table, models::music_aggregator};
@@ -25,14 +25,14 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(string(Column::Name))
-                    .col(string(Column::Artists))
+                    .col(json(Column::Artists))
                     .col(string_null(Column::Album))
                     .col(string_null(Column::AlbumId))
-                    .col(string(Column::Qualities))
+                    .col(json(Column::Qualities))
                     .col(string(Column::Cover))
                     // .col(string_null(Column::ArtistPic))
                     // .col(string_null(Column::AlbumPic))
-                    .col(integer_null(Column::Duration))
+                    .col(big_integer_null(Column::Duration))
                     .foreign_key(
                         ForeignKey::create()
                             .from(KuwoMusicTable::KuwoMusic, Column::MusicId)
