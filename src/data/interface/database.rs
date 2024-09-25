@@ -6,6 +6,9 @@ use sea_orm_migration::MigratorTrait as _;
 use crate::{data::migrations::Migrator, DB_POOL};
 
 pub async fn create_sqlite_db_file(database_url: &str) -> Result<(), anyhow::Error> {
+    if database_url == "sqlite::memory:" {
+        return Ok(());
+    }
     let db_file: PathBuf = PathBuf::from_str(database_url.split("///").last().ok_or(
         anyhow::anyhow!("Invalid database url, use 'sqlite:///path/to/database.db'"),
     )?)?;
@@ -29,7 +32,7 @@ pub async fn create_sqlite_db_file(database_url: &str) -> Result<(), anyhow::Err
 
 pub async fn set_db(database_url: &str) -> Result<(), anyhow::Error> {
     close_db().await?;
-    
+
     if database_url.starts_with("sqlite") {
         create_sqlite_db_file(database_url).await?;
     }
