@@ -3,8 +3,8 @@ use kuwo::web_api::share_playlist::get_kuwo_music_list_from_share;
 use netease::web_api::share_playlist::get_netease_music_list_from_share;
 use std::sync::Arc;
 
-pub(crate) mod kuwo;
-pub(crate) mod netease;
+pub mod kuwo;
+pub mod netease;
 
 use crate::data::interface::server::MusicServer;
 
