@@ -8,7 +8,7 @@ use crate::{
     server::{kuwo, netease},
 };
 
-use super::database::get_db;
+use super::database::{get_db, reinit_db};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DatabaseJson {
@@ -62,8 +62,7 @@ impl DatabaseJson {
             .await
             .ok_or(anyhow::anyhow!("Database is not initialized"))?;
 
-        playlist::Entity::delete_many().exec(&db).await?;
-        music_aggregator::Entity::delete_many().exec(&db).await?;
+        reinit_db().await?;
 
         playlist::Entity::insert_many(
             self.playlists

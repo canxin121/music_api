@@ -62,6 +62,23 @@ pub async fn close_db() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
+pub async fn clear_db() -> Result<(), anyhow::Error> {
+    let db = get_db()
+        .await
+        .ok_or(anyhow::anyhow!("Database is not inited"))?;
+    Migrator::down(&db, None).await?;
+    Ok(())
+}
+
+pub async fn reinit_db() -> Result<(), anyhow::Error> {
+    let db = get_db()
+        .await
+        .ok_or(anyhow::anyhow!("Database is not inited"))?;
+    Migrator::down(&db, None).await?;
+    Migrator::up(&db, None).await?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod test_database {
     use crate::data::interface::{
