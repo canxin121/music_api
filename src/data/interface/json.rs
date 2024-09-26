@@ -211,7 +211,10 @@ pub struct PlaylistJson {
     pub music_aggregators: Vec<MusicAggregator>,
 }
 
-impl PlaylistJson {
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PlaylistJsonVec(pub Vec<PlaylistJson>);
+
+impl PlaylistJsonVec {
     pub fn to_json(&self) -> anyhow::Result<String> {
         Ok(serde_json::to_string(self)?)
     }
@@ -231,39 +234,19 @@ impl PlaylistJson {
     }
 
     /// takes ownership
-    pub async fn insert_to_db(self) -> anyhow::Result<i64> {
-        let mut playlist = self.playlist;
-        playlist.from_db = false;
-        let id = playlist.insert_to_db().await?;
-        let inserted_playlist = Playlist::find_in_db(id).await.ok_or(anyhow::anyhow!(
-            "Failed to find playlist with id {} after insertion",
-            id
-        ))?;
-        inserted_playlist
-            .add_aggs_to_db(&self.music_aggregators)
-            .await?;
-        Ok(id)
-    }
-
-    pub async fn from_playlist(playlist: &Playlist) -> anyhow::Result<Self> {
-        let music_aggregators = match playlist.from_db {
-            true => playlist.get_musics_from_db().await?,
-            false => playlist.fetch_musics_online(1, 2333).await?,
-        };
-
-        Ok(Self {
-            playlist: playlist.clone(),
-            music_aggregators,
-        })
-    }
-
-    pub async fn from_playlist_music_aggs(
-        playlist: &Playlist,
-        music_aggregators: &Vec<MusicAggregator>,
-    ) -> anyhow::Result<Self> {
-        Ok(Self {
-            playlist: playlist.clone(),
-            music_aggregators: music_aggregators.clone(),
-        })
+    pub async fn insert_to_db(self) -> anyhow::Result<()> {
+        let mut playlistjsons = self.0;
+        for playlistjson in playlistjsons.iter_mut() {
+            playlistjson.playlist.from_db = false;
+            let id = playlistjson.playlist.insert_to_db().await?;
+            let inserted_playlist = Playlist::find_in_db(id).await.ok_or(anyhow::anyhow!(
+                "Failed to find playlist with id {} after insertion",
+                id
+            ))?;
+            inserted_playlist
+                .add_aggs_to_db(&playlistjson.music_aggregators)
+                .await?;
+        }
+        Ok(())
     }
 }
