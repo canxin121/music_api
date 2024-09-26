@@ -8,7 +8,11 @@ use crate::{
     server::{kuwo, netease},
 };
 
-use super::database::{get_db, reinit_db};
+use super::{
+    database::{get_db, reinit_db},
+    music_aggregator::MusicAggregator,
+    playlist::Playlist,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DatabaseJson {
@@ -20,6 +24,14 @@ pub struct DatabaseJson {
 }
 
 impl DatabaseJson {
+    pub fn to_json(&self) -> anyhow::Result<String> {
+        Ok(serde_json::to_string(self)?)
+    }
+
+    pub fn from_json(json: &str) -> anyhow::Result<Self> {
+        Ok(serde_json::from_str(json)?)
+    }
+
     pub async fn save_to(&self, path: &str) -> anyhow::Result<()> {
         let path = PathBuf::from_str(path)?;
         if let Some(parent) = path.parent() {
@@ -190,5 +202,68 @@ mod test {
 
         let playlists = Playlist::get_from_db().await.unwrap();
         assert!(playlists.len() > 0);
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PlaylistJson {
+    pub playlist: Playlist,
+    pub music_aggregators: Vec<MusicAggregator>,
+}
+
+impl PlaylistJson {
+    pub fn to_json(&self) -> anyhow::Result<String> {
+        Ok(serde_json::to_string(self)?)
+    }
+
+    pub fn from_json(json: &str) -> anyhow::Result<Self> {
+        Ok(serde_json::from_str(json)?)
+    }
+
+    pub async fn save_to(&self, path: &str) -> anyhow::Result<()> {
+        let json = self.to_json()?;
+        Ok(tokio::fs::write(path, json).await?)
+    }
+
+    pub async fn load_from(path: &str) -> anyhow::Result<Self> {
+        let json_str = tokio::fs::read_to_string(path).await?;
+        Self::from_json(&json_str)
+    }
+
+    /// takes ownership
+    pub async fn insert_to_db(self) -> anyhow::Result<i64> {
+        let mut playlist = self.playlist;
+        playlist.from_db = false;
+        let id = playlist.insert_to_db().await?;
+        let inserted_playlist = Playlist::find_in_db(id).await.ok_or(anyhow::anyhow!(
+            "Failed to find playlist with id {} after insertion",
+            id
+        ))?;
+        inserted_playlist
+            .add_aggs_to_db(&self.music_aggregators)
+            .await?;
+        Ok(id)
+    }
+
+    pub async fn from_playlist(playlist: &Playlist) -> anyhow::Result<Self> {
+        let music_aggregators = match playlist.from_db {
+            true => playlist.get_musics_from_db().await?,
+            false => playlist.fetch_musics_online(1, 2333).await?,
+        };
+
+        Ok(Self {
+            playlist: playlist.clone(),
+            music_aggregators,
+        })
+    }
+
+    pub async fn from_playlist_music_aggs(
+        playlist: &Playlist,
+        music_aggregators: &Vec<MusicAggregator>,
+    ) -> anyhow::Result<Self> {
+        Ok(Self {
+            playlist: playlist.clone(),
+            music_aggregators: music_aggregators.clone(),
+        })
     }
 }

@@ -13,7 +13,7 @@ use super::{
     utils::find_duplicate_music_agg,
 };
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Music {
     pub from_db: bool,
     pub server: MusicServer,
@@ -99,7 +99,7 @@ impl Music {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MusicAggregator {
     pub name: String,
     pub artist: String,
