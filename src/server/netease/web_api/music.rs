@@ -46,6 +46,7 @@ pub struct SearchMusicResult {
 #[serde(rename_all = "camelCase")]
 pub struct InnerResult {
     // pub search_qc_reminder: Value,
+    #[serde(default)]
     pub songs: Vec<Song>,
     // pub song_count: i64,
 }

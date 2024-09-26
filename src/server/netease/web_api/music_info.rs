@@ -13,6 +13,7 @@ struct CItem {
 
 #[derive(Deserialize)]
 struct GetMusicResponse {
+    #[serde(default)]
     songs: Vec<Song>,
 }
 

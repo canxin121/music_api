@@ -3,7 +3,8 @@ use serde_json::json;
 
 use crate::{
     data::interface::{playlist::Playlist, server::MusicServer},
-    server::netease::model::Model, CLIENT,
+    server::netease::model::Model,
+    CLIENT,
 };
 
 use super::{encrypt::weapi, music::Song};
@@ -47,6 +48,7 @@ async fn test_get_musics_from_album() {
 #[serde(rename_all = "camelCase")]
 pub struct GetAlbumResult {
     // pub resource_state: bool,
+    #[serde(default)]
     pub songs: Vec<Song>,
     // pub code: i64,
     pub album: Album,
