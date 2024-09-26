@@ -1,6 +1,6 @@
 use sea_orm::{
-    prelude::Expr, ColumnTrait as _, Condition, EntityTrait, ModelTrait, PaginatorTrait,
-    QueryFilter, Set,
+    prelude::Expr, ActiveValue::NotSet, ColumnTrait as _, Condition, EntityTrait, ModelTrait,
+    PaginatorTrait, QueryFilter, Set,
 };
 use serde::{Deserialize, Serialize};
 
@@ -382,6 +382,21 @@ impl Playlist {
         }
         Ok(result)
     }
+
+    pub async fn del_music_agg(&self, music_agg_identity: String) -> anyhow::Result<()> {
+        let db = get_db()
+            .await
+            .ok_or(anyhow::anyhow!("Database is not inited."))?;
+        let active = playlist_music_junction::ActiveModel {
+            playlist_id: Set(self.identity.parse()?),
+            music_aggregator_id: Set(music_agg_identity),
+            order: NotSet,
+        };
+        playlist_music_junction::Entity::delete(active)
+            .exec(&db)
+            .await?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -541,5 +556,29 @@ mod test_playlist {
         println!("{:?}", result);
         let reuslt = playlist.update_subscription().await.unwrap();
         println!("{:?}", reuslt);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_del_music_agg() {
+        re_init_db().await;
+        let playlist = Playlist::new(
+            "test".to_string(),
+            None,
+            None,
+            vec![PlayListSubscription {
+                name: "1".to_string(),
+                share: "分享Z殘心的歌单《米津玄师》https://y.music.163.com/m/playlist?app_version=8.9.20&id=6614178314&userid=317416193&dlt=0846&creatorId=317416193 (@网易云音乐)".to_string(),
+            }],
+        );
+        let playlist_id = playlist.insert_to_db().await.unwrap();
+        let playlist = Playlist::find_in_db(playlist_id).await.unwrap();
+        playlist.update_subscription().await.unwrap();
+        
+        let music_aggs = playlist.get_musics_from_db().await.unwrap();
+        playlist
+            .del_music_agg(music_aggs.first().unwrap().identity())
+            .await
+            .unwrap();
     }
 }
