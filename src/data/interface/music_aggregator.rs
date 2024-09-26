@@ -67,9 +67,6 @@ impl Music {
     }
 
     pub async fn insert_to_db(&self) -> anyhow::Result<()> {
-        if self.from_db {
-            return Err(anyhow::anyhow!("Music from db, can't insert"));
-        }
         let db = get_db()
             .await
             .ok_or(anyhow::anyhow!("Database is not inited"))?;

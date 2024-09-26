@@ -128,10 +128,6 @@ impl Playlist {
 
     // insert a playlist to db
     pub async fn insert_to_db(&self) -> Result<i64> {
-        if self.from_db && !self.identity.is_empty() {
-            return Err(anyhow::anyhow!("Playlist from db, can't insert."));
-        }
-
         let db = get_db()
             .await
             .ok_or(anyhow::anyhow!("Database is not inited."))?;
@@ -146,11 +142,6 @@ impl Playlist {
                 .clone()
                 .and_then(|s| Some(PlayListSubscriptionVec(s))),
         );
-        // let statement = playlist::Entity::insert(playlist.clone())
-        //     .as_query()
-        //     .to_string(PostgresQueryBuilder);
-        // println!("Statement: {}", statement);
-
         let result = playlist::Entity::insert(playlist).exec(&db).await?;
         let last_id = result.last_insert_id;
         Ok(last_id)

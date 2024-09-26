@@ -235,9 +235,7 @@ impl PlaylistJsonVec {
 
     /// takes ownership
     pub async fn insert_to_db(self) -> anyhow::Result<()> {
-        let mut playlistjsons = self.0;
-        for playlistjson in playlistjsons.iter_mut() {
-            playlistjson.playlist.from_db = false;
+        for playlistjson in self.0 {
             let id = playlistjson.playlist.insert_to_db().await?;
             let inserted_playlist = Playlist::find_in_db(id).await.ok_or(anyhow::anyhow!(
                 "Failed to find playlist with id {} after insertion",
