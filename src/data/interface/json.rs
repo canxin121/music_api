@@ -250,3 +250,26 @@ impl PlaylistJsonVec {
         Ok(())
     }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct MusicAggregatorJsonVec(pub Vec<MusicAggregator>);
+
+impl MusicAggregatorJsonVec {
+    pub fn to_json(&self) -> anyhow::Result<String> {
+        Ok(serde_json::to_string(self)?)
+    }
+
+    pub fn from_json(json: &str) -> anyhow::Result<Self> {
+        Ok(serde_json::from_str(json)?)
+    }
+
+    pub async fn save_to(&self, path: &str) -> anyhow::Result<()> {
+        let json = self.to_json()?;
+        Ok(tokio::fs::write(path, json).await?)
+    }
+
+    pub async fn load_from(path: &str) -> anyhow::Result<Self> {
+        let json_str = tokio::fs::read_to_string(path).await?;
+        Self::from_json(&json_str)
+    }
+}
