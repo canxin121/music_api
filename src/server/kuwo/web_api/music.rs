@@ -203,7 +203,11 @@ impl Into<crate::server::kuwo::model::Model> for SearchMusic {
         let artists = crate::data::interface::artist::ArtistVec::from(artists);
         crate::server::kuwo::model::Model {
             name: self.name,
-            music_id: self.musicrid,
+            music_id: self
+                .musicrid
+                .strip_prefix("MUSIC_")
+                .unwrap_or(&self.musicrid)
+                .to_string(),
             artists,
             album: Some(self.album),
             album_id: Some(self.albumid),

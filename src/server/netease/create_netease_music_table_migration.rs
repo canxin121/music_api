@@ -51,6 +51,7 @@ impl MigrationTrait for Migration {
             .drop_table(
                 Table::drop()
                     .table(NeteaseMusicTable::NeteaseMusic)
+                    .if_exists()
                     .to_owned(),
             )
             .await

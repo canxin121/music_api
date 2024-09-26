@@ -9,7 +9,8 @@ use crate::{
 };
 
 use super::{
-    artist::Artist, database::get_db, quality::Quality, server::MusicServer, utils::is_artist_equal,
+    artist::Artist, database::get_db, quality::Quality, server::MusicServer,
+    utils::find_duplicate_music_agg,
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -116,12 +117,15 @@ impl MusicAggregator {
     pub fn from_music(music: Music) -> Self {
         MusicAggregator {
             name: music.name.clone(),
-            artist: music
-                .artists
-                .iter()
-                .map(|x| x.name.clone())
-                .collect::<Vec<String>>()
-                .join("&"),
+            artist: {
+                let mut artists = music
+                    .artists
+                    .iter()
+                    .map(|x| x.name.clone())
+                    .collect::<Vec<String>>();
+                artists.sort();
+                artists.join("&")
+            },
             from_db: music.from_db,
             default_server: music.server.clone(),
             musics: vec![music],
@@ -165,7 +169,8 @@ impl MusicAggregator {
         Ok(())
     }
 
-    pub async fn save_to_db(&self) -> Result<(), anyhow::Error> {
+    /// Ignores depulicate error, but return the depulicated music_aggregator identity
+    pub async fn save_to_db(&self) -> Result<Option<String>, anyhow::Error> {
         let db = get_db()
             .await
             .ok_or(anyhow::anyhow!("Database is not inited"))?;
@@ -182,6 +187,7 @@ impl MusicAggregator {
             .iter()
             .find(|x| x.server == MusicServer::Netease)
             .and_then(|x| Some(x.identity.clone()));
+        let mut duplicate_identity = None::<String>;
 
         if let Some(agg) = music_aggregator::Entity::find_by_id(self.identity())
             .one(&db)
@@ -209,16 +215,39 @@ impl MusicAggregator {
                     .server
                     .clone()),
             };
-            music_aggregator::Entity::insert(agg)
+
+            if let Err(e) = music_aggregator::Entity::insert(agg)
                 .on_conflict_do_nothing()
-                .exec(&db)
-                .await?;
+                .exec_without_returning(&db)
+                .await
+            {
+                if let sea_orm::DbErr::Exec(sea_orm::RuntimeErr::SqlxError(
+                    sea_orm::SqlxError::Database(ref database_error),
+                )) = &e
+                {
+                    let database_error_str = database_error.to_string();
+                    // Sqlite Unique error
+                    if database_error_str.contains("UNIQUE")
+                        // MySql Unique error
+                        ||database_error_str.contains("1062")
+                        // PgSql Unique error
+                        || database_error_str.contains("duplicate")
+                    {
+                        duplicate_identity = find_duplicate_music_agg(&db, self).await;
+                    } else {
+                        return Err(anyhow::anyhow!(e));
+                    }
+                } else {
+                    return Err(anyhow::anyhow!(e));
+                }
+            }
         }
 
         for music in &self.musics {
             let _ = music.insert_to_db().await;
         }
-        Ok(())
+
+        Ok(duplicate_identity)
     }
 
     pub async fn update_order_to_db(&self, playlist_id: i64) -> Result<(), anyhow::Error> {
@@ -271,7 +300,7 @@ impl MusicAggregator {
         if servers.is_empty() {
             return Err((aggs, "No servers provided".to_string()));
         }
-        
+
         let mut map = {
             if !aggs.is_empty() {
                 let pair = aggs
@@ -294,16 +323,15 @@ impl MusicAggregator {
             .ok()
         {
             for music in musics {
-                let identity = format!(
-                    "{}#+#{}",
-                    music.name,
-                    music
+                let identity = format!("{}#+#{}", music.name, {
+                    let mut artists = music
                         .artists
                         .iter()
                         .map(|x| x.name.clone())
-                        .collect::<Vec<String>>()
-                        .join("&")
-                )
+                        .collect::<Vec<String>>();
+                    artists.sort();
+                    artists.join("&")
+                })
                 .to_lowercase();
                 if let Some(pair) = map.get_mut(&identity) {
                     if !pair.1.musics.iter().any(|x| x.server == music.server) {
@@ -364,15 +392,15 @@ impl MusicAggregator {
                 }
                 for server in servers {
                     if let Some(music) = musics.iter().find(|x| {
-                        x.server == server
-                            && x.name == self.name
-                            && is_artist_equal(
-                                x.artists
-                                    .iter()
-                                    .map(|a| a.name.as_str())
-                                    .collect::<Vec<&str>>(),
-                                self.artist.split('&').collect::<Vec<&str>>(),
-                            )
+                        x.server == server && x.name == self.name && {
+                            let mut artists = x
+                                .artists
+                                .iter()
+                                .map(|artist| artist.name.as_str())
+                                .collect::<Vec<&str>>();
+                            artists.sort();
+                            artists.join("&") == self.artist
+                        }
                     }) {
                         self.musics.push(music.clone());
                     }

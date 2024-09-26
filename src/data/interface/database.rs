@@ -9,8 +9,8 @@ pub async fn create_sqlite_db_file(database_url: &str) -> Result<(), anyhow::Err
     if database_url == "sqlite::memory:" {
         return Ok(());
     }
-    let db_file: PathBuf = PathBuf::from_str(database_url.split("///").last().ok_or(
-        anyhow::anyhow!("Invalid database url, use 'sqlite:///path/to/database.db'"),
+    let db_file: PathBuf = PathBuf::from_str(database_url.split("//").last().ok_or(
+        anyhow::anyhow!("Invalid database url, use 'sqlite://path/to/database.db'"),
     )?)?;
 
     if db_file.parent().is_none() {
@@ -80,7 +80,7 @@ pub async fn reinit_db() -> Result<(), anyhow::Error> {
 }
 
 #[cfg(test)]
-mod test_database {
+mod test {
     use crate::data::interface::{
         music_aggregator::MusicAggregator, playlist::Playlist, server::MusicServer,
     };
@@ -128,17 +128,33 @@ mod test_database {
     }
 
     #[tokio::test]
-    async fn test_set_db() {
+    #[serial_test::serial]
+    async fn test_sqlite() {
         tracing_subscriber::fmt::init();
-        set_db("sqlite::memory:").await.unwrap();
+        set_db("sqlite://./sample_data/test.db").await.unwrap();
+        reinit_db().await.unwrap();
         test_op().await;
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_mysql() {
+        tracing_subscriber::fmt::init();
         set_db("mysql://test:testpasswd@localhost:3306/app_rhyme")
             .await
             .unwrap();
+        reinit_db().await.unwrap();
         test_op().await;
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_postgresql() {
+        tracing_subscriber::fmt::init();
         set_db("postgresql://test:testpasswd@localhost:5432/app_rhyme")
             .await
             .unwrap();
+        reinit_db().await.unwrap();
         test_op().await;
     }
 }

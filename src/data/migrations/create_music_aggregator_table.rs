@@ -43,6 +43,7 @@ impl MigrationTrait for Migration {
             .drop_table(
                 Table::drop()
                     .table(MusicAggregatorTable::MusicAggragator)
+                    .if_exists()
                     .to_owned(),
             )
             .await

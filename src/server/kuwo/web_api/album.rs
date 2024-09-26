@@ -236,7 +236,11 @@ impl Into<crate::server::kuwo::model::Model> for AlbumMusic {
         let artists = crate::data::interface::artist::ArtistVec::from(artists);
         crate::server::kuwo::model::Model {
             name: self.name,
-            music_id: self.id,
+            music_id: self
+                .id
+                .strip_prefix("MUSIC_")
+                .unwrap_or(&self.id)
+                .to_string(),
             artists,
             album: Some(self.album),
             album_id: Some(self.album_id),

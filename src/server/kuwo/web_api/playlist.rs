@@ -249,7 +249,11 @@ impl Into<crate::server::kuwo::model::Model> for MusiclistMusic {
         crate::server::kuwo::model::Model {
             name: self.name,
             artists,
-            music_id: self.id,
+            music_id: self
+                .id
+                .strip_prefix("MUSIC_")
+                .unwrap_or(&self.id)
+                .to_string(),
             album: Some(self.album),
             album_id: Some(self.albumid),
             qualities: parse_qualities_minfo(&self.minfo).into(),

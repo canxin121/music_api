@@ -61,6 +61,7 @@ impl MigrationTrait for Migration {
             .drop_table(
                 Table::drop()
                     .table(PlaylistMusicJunctionTable::PlaylistMusicJunction)
+                    .if_exists()
                     .to_owned(),
             )
             .await

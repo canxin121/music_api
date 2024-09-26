@@ -1,10 +1,13 @@
 use sea_orm::{
-    prelude::Expr, ColumnTrait as _, Condition, EntityTrait,
-    ModelTrait, PaginatorTrait, QueryFilter, Set,
+    prelude::Expr, ColumnTrait as _, Condition, EntityTrait, ModelTrait, PaginatorTrait,
+    QueryFilter, Set,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::data::models::{music_aggregator, playlist, playlist_music_junction};
+use crate::data::{
+    interface::utils::find_duplicate_music_agg,
+    models::{music_aggregator, playlist, playlist_music_junction},
+};
 use anyhow::Result;
 
 use super::{
@@ -205,23 +208,100 @@ impl Playlist {
                 ))
                 .count(&db)
                 .await?;
-        let mut order = count as i64;
-        let mut junctions = Vec::with_capacity(music_aggs.len());
 
+        let mut order = count as i64;
         for music_agg in music_aggs {
-            music_agg.save_to_db().await?;
-            let junction = playlist_music_junction::ActiveModel::new(
-                self.identity.parse::<i64>()?,
-                music_agg.identity(),
-                order,
-            );
-            order += 1;
-            junctions.push(junction);
+            match music_agg.save_to_db().await {
+                Ok(duplicate) => {
+                    let junction = playlist_music_junction::ActiveModel::new(
+                        self.identity.parse::<i64>()?,
+                        duplicate.unwrap_or(music_agg.identity()),
+                        order,
+                    );
+                    order += 1;
+
+                    match playlist_music_junction::Entity::insert(junction)
+                        .exec_without_returning(&db)
+                        .await
+                    {
+                        Ok(_) => {}
+                        Err(e) => {
+                            if let sea_orm::DbErr::Exec(sea_orm::RuntimeErr::SqlxError(
+                                sea_orm::SqlxError::Database(database_error),
+                            )) = &e
+                            {
+                                let database_error_str = database_error.to_string();
+                                // Sqlite Unique error
+                                if database_error_str.contains("UNIQUE")
+                                    // MySql Unique error
+                                    ||database_error_str.contains("1062")
+                                    // PgSql Unique error
+                                    || database_error_str.contains("duplicate")
+                                {
+                                    continue;
+                                } else if database_error_str.contains("1452")
+                                    || database_error_str.contains("violates foreign key")
+                                {
+                                    // 因为某些平台的 不同名称的歌曲公用一个id, 所以可能会出现重复
+                                    // 因此导致名称不同，但是内容相同的MusicAggregator插入失败
+                                    // 此时应该根据id查找到已有的MusicAggregator，然后插入junction
+                                    if let Some(found_music_agg_id) =
+                                        find_duplicate_music_agg(&db, music_agg).await
+                                    {
+                                        let junction = playlist_music_junction::ActiveModel::new(
+                                            self.identity.parse::<i64>()?,
+                                            found_music_agg_id,
+                                            order,
+                                        );
+                                        order += 1;
+                                        if let Err(e) =
+                                            playlist_music_junction::Entity::insert(junction)
+                                                .exec_without_returning(&db)
+                                                .await
+                                        {
+                                            log::error!(
+                                                "Failed to try fix save playlist music junction for music agg: [{}]({}) and playlist: [{}]({}), error: ({})",
+                                                music_agg.identity(),
+                                                music_agg.name,
+                                                self.identity,
+                                                self.name,
+                                                e.to_string()
+                                            );
+                                        } else {
+                                            continue;
+                                        }
+                                    } else {
+                                        log::error!(
+                                            "Failed to try fix save playlist music junction for music agg: [{}]({}) and playlist: [{}]({}), error: Can't find the depulicate music agg.",
+                                            music_agg.identity(),
+                                            music_agg.name,
+                                            self.identity,
+                                            self.name,
+                                        );
+                                        continue;
+                                    }
+                                }
+                            }
+                            log::error!(
+                                "Failed to save playlist music junction for music agg: [{}]({}) and playlist: [{}]({}), error: ({})",
+                                music_agg.identity(),
+                                music_agg.name,
+                                self.identity,
+                                self.name,
+                                e.to_string()
+                            );
+                        }
+                    };
+                }
+                Err(e) => log::error!(
+                    "Failed to save music agg: [{}]({}), error: {}",
+                    music_agg.identity(),
+                    music_agg.name,
+                    e.to_string()
+                ),
+            }
         }
-        playlist_music_junction::Entity::insert_many(junctions)
-            .on_conflict_do_nothing()
-            .exec(&db)
-            .await?;
+
         Ok(())
     }
 
