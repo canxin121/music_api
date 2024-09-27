@@ -1,5 +1,8 @@
 use sea_orm::{
-    prelude::Expr, ActiveValue::NotSet, ColumnTrait as _, Condition, EntityTrait, ModelTrait,
+    prelude::Expr,
+    sea_query::{Alias, Func, Query, SqliteQueryBuilder},
+    ActiveValue::NotSet,
+    ColumnTrait as _, Condition, ConnectionTrait, EntityName, EntityTrait, ModelTrait,
     PaginatorTrait, QueryFilter, Set,
 };
 use serde::{Deserialize, Serialize};
@@ -128,20 +131,35 @@ impl Playlist {
 
     // insert a playlist to db
     pub async fn insert_to_db(&self) -> Result<i64> {
-        let db = get_db()
+        let db: sea_orm::DatabaseConnection = get_db()
             .await
             .ok_or(anyhow::anyhow!("Database is not inited."))?;
 
-        let order = playlist::Entity::find().count(&db).await?;
+        let statement = Query::select()
+            .expr(Func::max(Expr::col((
+                Alias::new("playlist"),
+                playlist::Column::Id,
+            ))))
+            .from(playlist::Entity)
+            .to_owned();
+        let query_result = db
+            .query_one(sea_orm::StatementBuilder::build(
+                &statement,
+                &db.get_database_backend(),
+            ))
+            .await?
+            .ok_or(anyhow::anyhow!("Failed to get max id from playlist table."))?;
+        let max_id: i64 = query_result.try_get_by_index(0).ok().unwrap_or(0);
         let playlist = playlist::ActiveModel::new(
             self.name.clone(),
             self.summary.clone(),
             self.cover.clone(),
-            order as i64,
+            max_id + 1,
             self.subscription
                 .clone()
                 .and_then(|s| Some(PlayListSubscriptionVec(s))),
         );
+
         let result = playlist::Entity::insert(playlist).exec(&db).await?;
         let last_id = result.last_insert_id;
         Ok(last_id)
@@ -432,10 +450,11 @@ mod test_playlist {
             None,
             vec![],
         );
-        println!("{:?}", playlist);
+        playlist.insert_to_db().await.unwrap();
+        playlist.insert_to_db().await.unwrap();
         playlist.insert_to_db().await.unwrap();
         let playlists = Playlist::get_from_db().await.unwrap();
-        assert!(playlists.len() == 1);
+        assert!(playlists.len() == 3);
     }
 
     #[tokio::test]
@@ -574,7 +593,7 @@ mod test_playlist {
         let playlist_id = playlist.insert_to_db().await.unwrap();
         let playlist = Playlist::find_in_db(playlist_id).await.unwrap();
         playlist.update_subscription().await.unwrap();
-        
+
         let music_aggs = playlist.get_musics_from_db().await.unwrap();
         playlist
             .del_music_agg(music_aggs.first().unwrap().identity())
