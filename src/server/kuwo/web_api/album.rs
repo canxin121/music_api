@@ -11,7 +11,7 @@ use crate::{
     CLIENT,
 };
 
-use super::utils::{get_music_rid_pic, parse_qualities_formats};
+use super::utils::{decode_html_entities, get_music_rid_pic, parse_qualities_formats};
 
 pub(crate) async fn get_kuwo_music_album(
     album_id: &str,
@@ -113,7 +113,7 @@ impl Into<Playlist> for Album {
             server: Some(MusicServer::Kuwo),
             type_field: PlaylistType::Album,
             identity: self.id,
-            name: self.name,
+            name: decode_html_entities(self.name),
             summary: Some(self.info),
             cover: Some(self.img),
             creator: Some(self.artist),
@@ -235,7 +235,7 @@ impl Into<crate::server::kuwo::model::Model> for AlbumMusic {
             .collect();
         let artists = crate::data::interface::artist::ArtistVec::from(artists);
         crate::server::kuwo::model::Model {
-            name: self.name,
+            name: decode_html_entities(self.name),
             music_id: self
                 .id
                 .strip_prefix("MUSIC_")
