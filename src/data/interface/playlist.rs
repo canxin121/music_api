@@ -1,9 +1,9 @@
 use sea_orm::{
     prelude::Expr,
-    sea_query::{Alias, Func, Query, SqliteQueryBuilder},
+    sea_query::{Alias, Func, Query},
     ActiveValue::NotSet,
-    ColumnTrait as _, Condition, ConnectionTrait, EntityName, EntityTrait, ModelTrait,
-    PaginatorTrait, QueryFilter, Set,
+    ColumnTrait as _, Condition, ConnectionTrait, EntityTrait, ModelTrait, PaginatorTrait,
+    QueryFilter, Set,
 };
 use serde::{Deserialize, Serialize};
 

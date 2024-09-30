@@ -286,16 +286,16 @@ impl MusicAggregator {
         Ok(())
     }
 
-    /// take ownership
+    /// takes ownership
     pub async fn search_online(
         aggs: Vec<MusicAggregator>,
         servers: Vec<MusicServer>,
         content: String,
         page: i64,
         size: i64,
-    ) -> Result<Vec<Self>, (Vec<Self>, String)> {
+    ) -> anyhow::Result<Vec<Self>> {
         if servers.is_empty() {
-            return Err((aggs, "No servers provided".to_string()));
+            return Err(anyhow::anyhow!("No servers provided".to_string()));
         }
 
         let mut map = {
@@ -368,24 +368,24 @@ impl MusicAggregator {
         if success {
             Ok(aggs)
         } else {
-            Err((aggs, "Music search failed".to_string()))
+            Err(anyhow::anyhow!("Music search failed".to_string()))
         }
     }
 
-    /// take ownership
+    /// takes ownership
     pub async fn fetch_server_online(
         mut self,
         mut servers: Vec<MusicServer>,
-    ) -> Result<Self, (Self, String)> {
+    ) -> anyhow::Result<Self> {
         servers.retain(|x| !self.musics.iter().any(|y| y.server == *x));
 
         if servers.is_empty() {
-            return Err((self, "No more servers to fetch".to_string()));
+            return Err(anyhow::anyhow!("No more servers to fetch".to_string()));
         }
         match Music::search_online(servers.clone(), self.identity(), 1, 10).await {
             Ok(musics) => {
                 if musics.is_empty() {
-                    return Err((self, "No musics found from servers".to_string()));
+                    return Err(anyhow::anyhow!("No musics found from servers".to_string()));
                 }
                 for server in servers {
                     if let Some(music) = musics.iter().find(|x| {
@@ -404,7 +404,7 @@ impl MusicAggregator {
                 }
                 Ok(self)
             }
-            Err(e) => Err((self, format!("Failed to fetch servers: {}", e))),
+            Err(e) => Err(anyhow::anyhow!(format!("Failed to fetch servers: {}", e))),
         }
     }
 }
@@ -476,6 +476,7 @@ mod test_music_aggregator {
         )
         .await
         .unwrap();
+
         let first = aggs.first().unwrap().clone();
         println!("{:#?}", first);
     }
