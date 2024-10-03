@@ -372,7 +372,7 @@ impl MusicAggregator {
         }
     }
 
-    /// takes ownership
+    /// takes ownership 
     pub async fn fetch_server_online(
         mut self,
         mut servers: Vec<MusicServer>,
