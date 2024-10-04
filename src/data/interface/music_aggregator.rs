@@ -1,6 +1,9 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use sea_orm::{prelude::Expr, Condition, EntityTrait, IntoActiveModel as _, QueryFilter, Set};
+use sea_orm::{
+    prelude::Expr, ColumnTrait, Condition, EntityTrait, IntoActiveModel as _, ModelTrait,
+    QueryFilter, Set,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -372,7 +375,7 @@ impl MusicAggregator {
         }
     }
 
-    /// takes ownership 
+    /// takes ownership
     pub async fn fetch_server_online(
         mut self,
         mut servers: Vec<MusicServer>,
@@ -407,10 +410,35 @@ impl MusicAggregator {
             Err(e) => Err(anyhow::anyhow!(format!("Failed to fetch servers: {}", e))),
         }
     }
+
+    pub async fn clear_unused() -> anyhow::Result<()> {
+        let db = get_db()
+            .await
+            .ok_or(anyhow::anyhow!("Database is not inited"))?;
+
+        let junctions = playlist_music_junction::Entity::find().all(&db).await?;
+
+        let used_music_ids: HashSet<_> = junctions
+            .into_iter()
+            .map(|junction| junction.music_aggregator_id)
+            .collect();
+
+        let unused_music_aggs = music_aggregator::Entity::find()
+            .filter(music_aggregator::Column::Identity.is_not_in(used_music_ids))
+            .all(&db)
+            .await?;
+
+        for music_agg in unused_music_aggs {
+            music_agg.delete(&db).await?;
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod test_music_aggregator {
+    use sea_orm::EntityTrait;
     use sea_orm_migration::MigratorTrait as _;
     use serial_test::serial;
 
@@ -422,6 +450,7 @@ mod test_music_aggregator {
             server::MusicServer,
         },
         migrations::Migrator,
+        models::music_aggregator,
     };
 
     async fn re_init_db() {
@@ -521,5 +550,41 @@ mod test_music_aggregator {
             agg.save_to_db().await.unwrap();
             println!("{:?}", agg);
         }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn clear_unused() {
+        re_init_db().await;
+        let playlists = Playlist::search_online(
+            vec![MusicServer::Kuwo, MusicServer::Netease],
+            "米津玄师".to_string(),
+            1,
+            5,
+        )
+        .await
+        .unwrap();
+
+        for playlist in playlists {
+            let new_id = playlist.insert_to_db().await.unwrap();
+            let inserted_playlist = Playlist::find_in_db(new_id).await.unwrap();
+            inserted_playlist
+                .add_aggs_to_db(&playlist.fetch_musics_online(1, 2333).await.unwrap())
+                .await
+                .unwrap();
+        }
+
+        let playlists = Playlist::get_from_db().await.unwrap();
+        assert!(playlists.len() > 0);
+        for playlist in playlists {
+            playlist.del_from_db().await.unwrap();
+        }
+
+        MusicAggregator::clear_unused().await.unwrap();
+        let music_aggs = music_aggregator::Entity::find()
+            .all(&get_db().await.unwrap())
+            .await
+            .unwrap();
+        assert!(music_aggs.is_empty());
     }
 }
