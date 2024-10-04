@@ -148,6 +148,10 @@ impl DatabaseJson {
 
         reinit_db().await?;
 
+        if self.playlists.is_empty() {
+            return Ok(());
+        }
+
         playlist::Entity::insert_many(
             self.playlists
                 .into_iter()
@@ -157,18 +161,9 @@ impl DatabaseJson {
         .exec_without_returning(&db)
         .await?;
 
-        music_aggregator::Entity::insert_many(
-            self.music_aggregators
-                .into_iter()
-                .map(|m| {
-                    let active = m.into_active_model().reset_all();
-                    // println!("{:?}", active);
-                    active
-                })
-                .collect::<Vec<music_aggregator::ActiveModel>>(),
-        )
-        .exec_without_returning(&db)
-        .await?;
+        if self.music_aggregators.is_empty() {
+            return Ok(());
+        }
 
         kuwo::model::Entity::insert_many(
             self.kuwo_table
