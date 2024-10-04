@@ -318,7 +318,7 @@ impl Music {
 }
 
 #[cfg(test)]
-mod server_test {
+mod test {
     use crate::data::interface::{
         music_aggregator::Music, playlist::Playlist, server::MusicServer,
     };

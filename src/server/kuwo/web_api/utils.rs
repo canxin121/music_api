@@ -34,7 +34,14 @@ pub fn parse_qualities_minfo(input: &str) -> Vec<Quality> {
             }
         })
         .collect();
-    qualities.sort_by(|a, b| b.bitrate.cmp(&a.bitrate));
+    qualities.sort_by(|a, b| {
+        let a_bitrate = a.bitrate.as_deref().unwrap_or("");
+        let b_bitrate = b.bitrate.as_deref().unwrap_or("");
+        b_bitrate
+            .parse::<u32>()
+            .unwrap_or_default()
+            .cmp(&a_bitrate.parse::<u32>().unwrap_or_default())
+    });
     qualities
 }
 
@@ -84,25 +91,3 @@ pub fn find_kuwo_plylist_id_from_share_url(url: &str) -> Option<String> {
     }
     None
 }
-
-// pub fn build_web_albumpic_short(web_albumpic_short: &str) -> Option<String> {
-//     if web_albumpic_short.is_empty() {
-//         None
-//     } else {
-//         Some(format!(
-//             "https://img2.kuwo.cn/star/albumcover/{}",
-//             web_albumpic_short
-//         ))
-//     }
-// }
-
-// pub fn build_web_artistpic_short(web_artistpic_short: &str) -> Option<String> {
-//     if web_artistpic_short.is_empty() {
-//         None
-//     } else {
-//         Some(format!(
-//             "https://img1.kuwo.cn/star/starheads/{}",
-//             web_artistpic_short
-//         ))
-//     }
-// }
