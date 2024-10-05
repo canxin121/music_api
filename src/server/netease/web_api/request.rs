@@ -36,8 +36,8 @@ impl SearchTarget {
 pub async fn search(
     search_target: SearchTarget,
     content: &str,
-    page: i64,
-    limit: i64,
+    page: u16,
+    limit: u16,
 ) -> Result<String, anyhow::Error> {
     if page == 0 {
         return Err(anyhow::anyhow!("Page must be greater than 0"));

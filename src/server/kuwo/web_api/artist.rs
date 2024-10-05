@@ -1,4 +1,3 @@
-use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -7,139 +6,101 @@ use crate::{
         playlist::{Playlist, PlaylistType},
         server::MusicServer,
     },
-    server::kuwo,
+    server::kuwo::{self, web_api::utils::get_music_rid_pic},
     CLIENT,
 };
 
-use super::utils::{decode_html_entities, get_music_rid_pic, parse_qualities_formats};
+use super::utils::{decode_html_entities, parse_qualities_formats};
 
-pub(crate) async fn get_kuwo_music_album(
-    album_id: &str,
-    album_name: &str,
+pub async fn get_artist_musics(
+    artist_id: &str,
     page: u16,
-    limit: u16,
-) -> Result<(Option<Playlist>, Vec<kuwo::model::Model>)> {
-    if page == 0 {
-        return Err(anyhow::anyhow!("Page must be more than or equal 1."));
+    page_size: u16,
+) -> anyhow::Result<Vec<kuwo::model::Model>> {
+    if page < 1 {
+        return Err(anyhow::anyhow!("page must be greater than 0"));
     }
+    let url = format!("https://search.kuwo.cn/r.s?pn={}&rn={}&artistid={}&stype=artist2music&sortby=0&alflac=1&show_copyright_off=1&pcmp4=1&encoding=utf8&plat=pc&thost=search.kuwo.cn&vipver=MUSIC_9.1.1.2_BCS2&devid=38668888&newver=1&pcjson=1",page-1, page_size, artist_id);
 
-    let url = format!("http://search.kuwo.cn/r.s?pn={}&rn={}&stype=albuminfo&albumid={}&show_copyright_off=0&encoding=utf&vipver=MUSIC_9.1.0",page-1,limit,album_id);
-
-    let text = CLIENT
-        .get(&url)
-        .send()
-        .await?
-        .text()
-        .await?
-        .replace("'", "\"");
-    // std::fs::write("sample_data/kuwo/album.json", &text).unwrap();
-    let mut result: Album = serde_json::from_str(&text)?;
-    let mut musics = Vec::new();
-    std::mem::swap(&mut musics, &mut result.musiclist);
-
+    let result: ArtistMusicsResult = CLIENT.post(&url).send().await?.json().await?;
+    let mut musics = result.musiclist;
     let mut handles = Vec::with_capacity(musics.len());
 
     for music in musics.iter_mut() {
-        music.album = album_name.to_string();
-        music.album_id = album_id.to_string();
-        let music_id = music.id.clone();
+        let music_id = music.musicrid.clone();
         handles.push(async move {
             let music_pic = get_music_rid_pic(&music_id).await?;
             Ok::<String, anyhow::Error>(music_pic)
-        })
+        });
     }
 
     for (music, handle) in musics.iter_mut().zip(handles.into_iter()) {
         music.cover = handle.await.ok();
     }
 
-    let musics = musics
+    musics
         .into_iter()
-        .map(|m| {
-            let model: crate::server::kuwo::model::Model = m.into();
-            model
+        .map(|music| {
+            let model: kuwo::model::Model = music.into();
+            Ok(model)
         })
-        .collect();
+        .collect()
+}
 
-    if page == 1 {
-        Ok((Some(result.into()), musics))
-    } else {
-        Ok((None, musics))
+pub async fn get_artist_albums(
+    artist_id: &str,
+    page: u16,
+    page_size: u16,
+) -> anyhow::Result<Vec<Playlist>> {
+    let url = format!("https://search.kuwo.cn/r.s?pn={}&rn={}&artistid={}&stype=albumlist&sortby=1&alflac=1&show_copyright_off=1&pcmp4=1&encoding=utf8&plat=pc&thost=search.kuwo.cn&vipver=MUSIC_9.1.1.2_BCS2&devid=38668888&pcjson=1",page-1, page_size, artist_id);
+
+    let result: ArtistAlbumResult = CLIENT.get(&url).send().await?.json().await?;
+
+    result
+        .albumlist
+        .into_iter()
+        .map(|a| {
+            let playlist: Playlist = a.into();
+            Ok(playlist)
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod test {
+    use crate::server::kuwo::web_api::artist::{get_artist_albums, get_artist_musics};
+
+    #[tokio::test]
+    async fn test_get_artist_musics() {
+        let result = get_artist_musics("74016", 1, 30).await.unwrap();
+        println!("{:?}", result);
+    }
+
+    #[tokio::test]
+    async fn test_get_artist_albums() {
+        let result = get_artist_albums("74016", 1, 30).await.unwrap();
+        println!("{:?}", result);
     }
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Album {
-    // pub aartist: String,
-    // #[serde(rename = "ad_subtype")]
-    // pub ad_subtype: String,
-    // #[serde(rename = "ad_type")]
-    // pub ad_type: String,
-    // pub albumid: String,
-    pub artist: String,
-    pub artistid: String,
-    // pub artistpic: String,
-    // pub company: String,
-    // #[serde(rename = "content_type")]
-    // pub content_type: String,
-    // pub falbum: String,
-    // pub fartist: String,
-    // pub finished: String,
-    // #[serde(rename = "hts_img")]
-    // pub hts_img: String,
-    pub id: String,
-    pub img: String,
-    pub info: String,
-    // pub lang: String,
-    pub musiclist: Vec<AlbumMusic>,
-    pub name: String,
-    // pub pay: String,
-    // pub pic: String,
-    // #[serde(rename = "pub")]
-    // pub pub_field: String,
-    pub songnum: String,
-    // #[serde(rename = "sort_policy")]
-    // pub sort_policy: String,
-    // pub sp_privilege: String,
-    // pub tag: Vec<Tag>,
-    // pub title: String,
-    // pub vip: String,
-}
-
-impl Into<Playlist> for Album {
-    fn into(self) -> Playlist {
-        Playlist {
-            server: Some(MusicServer::Kuwo),
-            type_field: PlaylistType::Album,
-            identity: self.id,
-            name: decode_html_entities(self.name),
-            summary: Some(self.info),
-            cover: Some(self.img),
-            creator: Some(self.artist),
-            creator_id: Some(self.artistid),
-            play_time: None,
-            music_num: if let Ok(n) = self.songnum.parse() {
-                Some(n)
-            } else {
-                None
-            },
-            subscription: None,
-            from_db: false,
-            order: None,
-        }
-    }
+pub struct ArtistMusicsResult {
+    // pub artist: String,
+    pub musiclist: Vec<ArtistMusic>,
+    // pub pn: String,
+    // #[serde(rename = "return")]
+    // pub return_field: String,
+    // pub total: String,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AlbumMusic {
+pub struct ArtistMusic {
     #[serde(default)]
     pub cover: Option<String>,
-    #[serde(default)]
-    pub album: String,
-    #[serde(default)]
-    pub album_id: String,
+    // #[serde(rename = "COPYRIGHT")]
+    // pub copyright: String,
     // #[serde(rename = "CanSetRing")]
     // pub can_set_ring: String,
     // #[serde(rename = "CanSetRingback")]
@@ -151,6 +112,8 @@ pub struct AlbumMusic {
     // pub ad_subtype: String,
     // #[serde(rename = "ad_type")]
     // pub ad_type: String,
+    pub album: String,
+    pub albumid: String,
     pub allartistid: String,
     pub artist: String,
     // pub artistid: String,
@@ -160,25 +123,36 @@ pub struct AlbumMusic {
     // pub cache_status: String,
     // #[serde(rename = "content_type")]
     // pub content_type: String,
-    // pub copyright: String,
+    // pub falbum: String,
     // pub fartist: String,
     pub formats: String,
     // pub fpay: String,
     // pub fsongname: String,
-    pub id: String,
+    // pub hasecho: String,
+    // pub haskdatx: String,
     // #[serde(rename = "iot_info")]
     // pub iot_info: String,
     // #[serde(rename = "is_point")]
     // pub is_point: String,
     // pub isdownload: String,
     // pub isshowtype: String,
+    // pub mkvnsig1: String,
+    // pub mkvnsig2: String,
+    // pub mkvrid: String,
+    // pub mp3rid: String,
+    // pub mp3sig1: String,
+    // pub mp3sig2: String,
     // pub mp4sig1: String,
     // pub mp4sig2: String,
+    pub musicrid: String,
     // #[serde(rename = "muti_ver")]
     // pub muti_ver: String,
     // pub mvpayinfo: Mvpayinfo,
     pub name: String,
     // pub nationid: String,
+    // pub new: String,
+    // pub nsig1: String,
+    // pub nsig2: String,
     // pub online: String,
     // pub opay: String,
     // pub originalsongtype: String,
@@ -186,13 +160,10 @@ pub struct AlbumMusic {
     // pub overseas_copyright: String,
     // #[serde(rename = "overseas_pay")]
     // pub overseas_pay: String,
-    // pub param: String,
     // pub pay: String,
     // pub pay_info: PayInfo,
     // pub playcnt: String,
-    // pub rdts: String,
     // pub releasedate: String,
-    // pub score: String,
     // pub score100: String,
     // pub sp_privilege: String,
     // pub subs_strategy: String,
@@ -202,7 +173,6 @@ pub struct AlbumMusic {
     // #[serde(rename = "tme_musician_adtype")]
     // pub tme_musician_adtype: String,
     // pub tpay: String,
-    // pub track: String,
     // pub uploader: String,
     // pub uptime: String,
     // #[serde(rename = "web_albumpic_short")]
@@ -213,7 +183,7 @@ pub struct AlbumMusic {
     // pub web_timingonline: String,
 }
 
-impl Into<crate::server::kuwo::model::Model> for AlbumMusic {
+impl Into<crate::server::kuwo::model::Model> for ArtistMusic {
     fn into(self) -> crate::server::kuwo::model::Model {
         let artist_names = self
             .artist
@@ -237,13 +207,13 @@ impl Into<crate::server::kuwo::model::Model> for AlbumMusic {
         crate::server::kuwo::model::Model {
             name: decode_html_entities(self.name),
             music_id: self
-                .id
+                .musicrid
                 .strip_prefix("MUSIC_")
-                .unwrap_or(&self.id)
+                .unwrap_or(&self.musicrid)
                 .to_string(),
             artists,
             album: Some(self.album),
-            album_id: Some(self.album_id),
+            album_id: Some(self.albumid),
             qualities: parse_qualities_formats(&self.formats).into(),
             cover: {
                 if self.cover.is_some() && self.cover.as_ref().unwrap().starts_with("NO_PIC") {
@@ -338,11 +308,72 @@ impl Into<crate::server::kuwo::model::Model> for AlbumMusic {
 //     pub zply: i64,
 // }
 
-// #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-// #[serde(rename_all = "camelCase")]
-// pub struct Tag {
-//     pub cat1: String,
-//     pub cat2: String,
-//     #[serde(rename = "type")]
-//     pub type_field: String,
-// }
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArtistAlbumResult {
+    pub albumlist: Vec<Album>,
+    // pub pn: String,
+    // #[serde(rename = "return")]
+    // pub return_field: String,
+    // pub total: String,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Album {
+    // #[serde(rename = "PAY")]
+    // pub pay: String,
+    #[serde(rename = "PLAYCNT")]
+    pub playcnt: String,
+    pub aartist: String,
+    // #[serde(rename = "ad_subtype")]
+    // pub ad_subtype: String,
+    // #[serde(rename = "ad_type")]
+    // pub ad_type: String,
+    pub albumid: String,
+    pub artist: String,
+    pub artistid: String,
+    pub artistpic: String,
+    // pub color: String,
+    // pub company: String,
+    // #[serde(rename = "content_type")]
+    // pub content_type: String,
+    // pub falbum: String,
+    // pub fartist: String,
+    // pub finished: String,
+    pub id: String,
+    pub info: Option<String>,
+    // pub isstar: String,
+    // pub lang: String,
+    pub musiccnt: String,
+    pub name: String,
+    // pub new: String,
+    pub pic: String,
+    // #[serde(rename = "pub")]
+    // pub pub_field: String,
+    // pub score: String,
+    // pub sp_privilege: String,
+    // pub startype: String,
+    // pub title: String,
+    // pub vip: String,
+}
+
+impl Into<Playlist> for Album {
+    fn into(self) -> Playlist {
+        Playlist {
+            server: Some(MusicServer::Kuwo),
+            type_field: PlaylistType::Album,
+            identity: self.id,
+            name: decode_html_entities(self.name),
+            summary: self.info.and_then(|i| Some(decode_html_entities(i))),
+            cover: Some(format!("https://img2.kuwo.cn/star/albumcover/{}", self.pic)),
+            creator: Some(self.artist),
+            creator_id: Some(self.artistid),
+            play_time: self.playcnt.parse().ok(),
+            music_num: self.musiccnt.parse().ok(),
+            subscription: None,
+            from_db: false,
+            order: None,
+        }
+    }
+}

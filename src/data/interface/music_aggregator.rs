@@ -294,8 +294,8 @@ impl MusicAggregator {
         aggs: Vec<MusicAggregator>,
         servers: Vec<MusicServer>,
         content: String,
-        page: i64,
-        size: i64,
+        page: u16,
+        size: u16,
     ) -> anyhow::Result<Vec<Self>> {
         if servers.is_empty() {
             return Err(anyhow::anyhow!("No servers provided".to_string()));

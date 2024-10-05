@@ -17,8 +17,8 @@ impl Music {
     pub async fn search_online(
         servers: Vec<MusicServer>,
         content: String,
-        page: i64,
-        size: i64,
+        page: u16,
+        size: u16,
     ) -> Result<Vec<Music>> {
         let mut handles: Vec<tokio::task::JoinHandle<Vec<Music>>> =
             Vec::with_capacity(MusicServer::length());
@@ -128,6 +128,40 @@ mod server_music_test {
     }
 }
 
+impl MusicAggregator {
+    pub async fn fetch_artist_music_aggregators(
+        server: MusicServer,
+        artist_id: &str,
+        page: u16,
+        limit: u16,
+    ) -> anyhow::Result<Vec<Self>> {
+        match server {
+            MusicServer::Kuwo => kuwo::web_api::artist::get_artist_musics(artist_id, page, limit)
+                .await
+                .and_then(|musics| {
+                    Ok(musics
+                        .into_iter()
+                        .map(|music| {
+                            MusicAggregator::from_music(Music::from(music.into_music(false)))
+                        })
+                        .collect())
+                }),
+            MusicServer::Netease => {
+                netease::web_api::artist::get_artist_musics(artist_id, page, limit)
+                    .await
+                    .and_then(|musics| {
+                        Ok(musics
+                            .into_iter()
+                            .map(|music| {
+                                MusicAggregator::from_music(Music::from(music.into_music(false)))
+                            })
+                            .collect())
+                    })
+            }
+        }
+    }
+}
+
 impl Playlist {
     pub fn get_cover(&self, size: u16) -> Option<String> {
         match self.server {
@@ -136,7 +170,8 @@ impl Playlist {
                     cover
                         .replace("_700.", &format!("_{}.", size))
                         .replace("_150.", &format!("_{}.", size))
-                        .replace("/240/", &format!("/{}/", size)),
+                        .replace("/240/", &format!("/{}/", size))
+                        .replace("/120/", &format!("/{}/", size)),
                 )
             }),
             Some(MusicServer::Netease) => self
@@ -151,8 +186,8 @@ impl Playlist {
     pub async fn search_online(
         servers: Vec<MusicServer>,
         content: String,
-        page: i64,
-        size: i64,
+        page: u16,
+        size: u16,
     ) -> Result<Vec<Playlist>> {
         if servers.is_empty() {
             return Err(anyhow::anyhow!("No server specified"));
@@ -286,6 +321,22 @@ impl Playlist {
                         .collect())
                 }
             },
+        }
+    }
+
+    pub async fn fetch_artist_albums(
+        server: MusicServer,
+        artist_id: &str,
+        page: u16,
+        limit: u16,
+    ) -> Result<Vec<Playlist>> {
+        match server {
+            MusicServer::Kuwo => {
+                kuwo::web_api::artist::get_artist_albums(artist_id, page, limit).await
+            }
+            MusicServer::Netease => {
+                netease::web_api::artist::get_artist_albums(artist_id, page, limit).await
+            }
         }
     }
 }

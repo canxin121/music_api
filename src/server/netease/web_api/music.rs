@@ -10,8 +10,8 @@ use crate::{
 
 pub async fn search_netease_music(
     content: &str,
-    page: i64,
-    limit: i64,
+    page: u16,
+    limit: u16,
 ) -> Result<Vec<Model>, anyhow::Error> {
     let resp = search(SearchTarget::Music, content, page, limit).await?;
     // std::fs::write("sample_data/netease/search_music.json", resp)
@@ -187,7 +187,7 @@ impl Into<crate::data::interface::artist::Artist> for Artist {
     fn into(self) -> crate::data::interface::artist::Artist {
         crate::data::interface::artist::Artist {
             name: self.name,
-            id: Some(self.id),
+            id: Some(self.id.to_string()),
         }
     }
 }

@@ -4,6 +4,7 @@ pub mod music;
 pub mod playlist;
 pub mod share_playlist;
 pub mod utils;
+pub mod artist;
 
 #[cfg(test)]
 mod kuwo_web_api_test {

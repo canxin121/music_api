@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize, FromJsonQueryResult)]
 pub struct Artist {
     pub name: String,
-    pub id: Option<i64>,
+    pub id: Option<String>,
 }
 
 #[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize, FromJsonQueryResult)]

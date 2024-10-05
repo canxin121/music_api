@@ -10,7 +10,7 @@ use crate::{
 
 use super::utils::{decode_html_entities, get_music_rid_pic, parse_qualities_minfo};
 
-pub async fn search_kuwo_music_list(content: &str, page: i64, limit: i64) -> Result<Vec<Playlist>> {
+pub async fn search_kuwo_music_list(content: &str, page: u16, limit: u16) -> Result<Vec<Playlist>> {
     let url = format!("http://search.kuwo.cn/r.s?all={}&pn={}&rn={limit}&rformat=json&encoding=utf8&ver=mbox&vipver=MUSIC_8.7.7.0_BCS37&plat=pc&devid=28156413&ft=playlist&pay=0&needliveshow=0",encode(content),page-1);
     let text = CLIENT
         .get(&url)
