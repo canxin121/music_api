@@ -14,6 +14,11 @@ pub struct MusicChart {
 pub struct MusicChartCollection {
     pub name: String,
     pub summary: Option<String>,
-    pub server: MusicServer,
     pub charts: Vec<MusicChart>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ServerMusicChartCollection {
+    pub server: MusicServer,
+    pub collections: Vec<MusicChartCollection>,
 }

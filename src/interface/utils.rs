@@ -1,8 +1,8 @@
 use sea_orm::{prelude::Expr, Condition, DatabaseConnection, EntityTrait, QueryFilter};
 
-use crate::data::{interface::server::MusicServer, models::music_aggregator};
+use crate::data::models::music_aggregator;
 
-use super::music_aggregator::MusicAggregator;
+use super::{music_aggregator::MusicAggregator, server::MusicServer};
 
 pub(crate) fn split_string(input: &str) -> anyhow::Result<(String, String)> {
     let parts: Vec<&str> = input.split("#+#").collect();

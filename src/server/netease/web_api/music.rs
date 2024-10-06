@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    data::interface::quality::Quality,
+    interface::quality::Quality,
     server::netease::{
         model::Model,
         web_api::request::{search, SearchTarget},
@@ -163,7 +163,7 @@ impl Into<Model> for NeteaseMusic {
                 .ar
                 .into_iter()
                 .map(|a| a.into())
-                .collect::<Vec<crate::data::interface::artist::Artist>>()
+                .collect::<Vec<crate::interface::artist::Artist>>()
                 .into(),
             album: Some(self.al.name),
             album_id: Some(self.al.id.to_string()),
@@ -183,9 +183,9 @@ pub struct Artist {
     // pub alia: Vec<String>,
 }
 
-impl Into<crate::data::interface::artist::Artist> for Artist {
-    fn into(self) -> crate::data::interface::artist::Artist {
-        crate::data::interface::artist::Artist {
+impl Into<crate::interface::artist::Artist> for Artist {
+    fn into(self) -> crate::interface::artist::Artist {
+        crate::interface::artist::Artist {
             name: self.name,
             id: Some(self.id.to_string()),
         }

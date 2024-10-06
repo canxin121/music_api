@@ -2,7 +2,7 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    data::interface::{
+    interface::{
         music_aggregator::MusicAggregator, server::MusicServer, utils::split_string,
     },
     server::{kuwo, netease},

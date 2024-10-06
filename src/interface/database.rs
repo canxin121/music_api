@@ -81,7 +81,7 @@ pub async fn reinit_db() -> Result<(), anyhow::Error> {
 
 #[cfg(test)]
 mod test {
-    use crate::data::interface::{
+    use crate::interface::{
         music_aggregator::MusicAggregator, playlist::Playlist, server::MusicServer,
     };
 

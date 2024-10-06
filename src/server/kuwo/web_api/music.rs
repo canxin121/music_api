@@ -1,4 +1,4 @@
-use crate::{data::interface::artist::Artist, server::kuwo, CLIENT};
+use crate::{interface::artist::Artist, server::kuwo, CLIENT};
 
 use serde::{Deserialize, Serialize};
 
@@ -195,12 +195,12 @@ impl Into<crate::server::kuwo::model::Model> for SearchMusic {
         let artists: Vec<Artist> = artist_names
             .into_iter()
             .zip(artist_ids.into_iter().chain(std::iter::repeat("")))
-            .map(|(name, id)| crate::data::interface::artist::Artist {
+            .map(|(name, id)| crate::interface::artist::Artist {
                 name: name.to_string(),
                 id: id.parse().ok(),
             })
             .collect();
-        let artists = crate::data::interface::artist::ArtistVec::from(artists);
+        let artists = crate::interface::artist::ArtistVec::from(artists);
         crate::server::kuwo::model::Model {
             name: self.name,
             music_id: self

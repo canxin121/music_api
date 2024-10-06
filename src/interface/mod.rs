@@ -1,5 +1,5 @@
 pub mod artist;
-pub mod chart;
+pub mod music_chart;
 pub mod database;
 pub mod json;
 pub mod music_aggregator;
@@ -8,4 +8,5 @@ pub mod playlist_subscription;
 pub mod quality;
 pub mod results;
 pub mod server;
+pub mod playlist_tag;
 pub mod utils;

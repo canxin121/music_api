@@ -1,5 +1,5 @@
 use crate::{
-    data::interface::{playlist::Playlist, server::MusicServer},
+    interface::{playlist::Playlist, server::MusicServer},
     server::kuwo::web_api::utils::find_kuwo_plylist_id_from_share_url,
     CLIENT,
 };
@@ -48,7 +48,7 @@ impl Into<Playlist> for ShareMusicList {
         Playlist {
             from_db: false,
             server: Some(MusicServer::Kuwo),
-            type_field: crate::data::interface::playlist::PlaylistType::UserPlaylist,
+            type_field: crate::interface::playlist::PlaylistType::UserPlaylist,
             identity: self.id.to_string(),
             name: self.title,
             summary: Some(self.info),

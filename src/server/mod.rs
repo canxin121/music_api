@@ -7,12 +7,14 @@ use std::sync::Arc;
 pub mod kuwo;
 pub mod netease;
 
-use crate::data::interface::chart::MusicChartCollection;
-use crate::data::interface::server::MusicServer;
+use crate::interface::music_chart::ServerMusicChartCollection;
+use crate::interface::playlist_tag::ServerPlaylistTagCollection;
+use crate::interface::playlist_tag::TagPlaylistOrder;
+use crate::interface::server::MusicServer;
 
-use super::data::interface::music_aggregator::Music;
-use super::data::interface::music_aggregator::MusicAggregator;
-use super::data::interface::playlist::Playlist;
+use super::interface::music_aggregator::Music;
+use super::interface::music_aggregator::MusicAggregator;
+use super::interface::playlist::Playlist;
 
 impl Music {
     /// Search music online
@@ -385,7 +387,7 @@ impl Playlist {
         ))?;
         match server {
             MusicServer::Kuwo => match self.type_field {
-                super::data::interface::playlist::PlaylistType::UserPlaylist => {
+                super::interface::playlist::PlaylistType::UserPlaylist => {
                     let kuwo_musics = kuwo::web_api::playlist::get_kuwo_musics_of_music_list(
                         &self.identity,
                         page,
@@ -402,7 +404,7 @@ impl Playlist {
                         .map(|music| MusicAggregator::from_music(music))
                         .collect::<Vec<MusicAggregator>>())
                 }
-                super::data::interface::playlist::PlaylistType::Album => {
+                super::interface::playlist::PlaylistType::Album => {
                     let (_playlist, kuwo_musics) = kuwo::web_api::album::get_kuwo_music_album(
                         &self.identity,
                         &self.name,
@@ -423,7 +425,7 @@ impl Playlist {
                 }
             },
             MusicServer::Netease => match self.type_field {
-                super::data::interface::playlist::PlaylistType::UserPlaylist => {
+                super::interface::playlist::PlaylistType::UserPlaylist => {
                     let models = netease::web_api::playlist::get_musics_from_music_list(
                         &self.identity,
                         page,
@@ -440,7 +442,7 @@ impl Playlist {
                         .map(|music| MusicAggregator::from_music(music))
                         .collect())
                 }
-                super::data::interface::playlist::PlaylistType::Album => {
+                super::interface::playlist::PlaylistType::Album => {
                     let (_album, models) =
                         netease::web_api::album::get_musics_from_album(&self.identity).await?;
                     let musics: Vec<Music> = models
@@ -474,8 +476,8 @@ impl Playlist {
     }
 }
 
-impl MusicChartCollection {
-    pub async fn get_music_chart_collection() -> Result<Vec<MusicChartCollection>> {
+impl ServerMusicChartCollection {
+    pub async fn get_music_chart_collection() -> Result<Vec<ServerMusicChartCollection>> {
         let mut handles = Vec::with_capacity(MusicServer::length());
         // todo: add more servers
         handles.push(tokio::spawn(async move {
@@ -487,8 +489,8 @@ impl MusicChartCollection {
 
         let mut collections = Vec::new();
         for handle in handles {
-            if let Ok(Ok(mut collection)) = handle.await {
-                collections.append(&mut collection);
+            if let Ok(Ok(collection)) = handle.await {
+                collections.push(collection);
             }
         }
         Ok(collections)
@@ -521,10 +523,50 @@ impl MusicChartCollection {
     }
 }
 
+impl ServerPlaylistTagCollection {
+    pub async fn get_playlist_tags() -> Result<Vec<ServerPlaylistTagCollection>> {
+        let mut handles = Vec::with_capacity(MusicServer::length());
+        handles.push(tokio::spawn(async move {
+            kuwo::web_api::playlist_tag::get_playlist_tags().await
+        }));
+        handles.push(tokio::spawn(async move {
+            netease::web_api::playlist_tag::get_playlist_tags().await
+        }));
+
+        let mut collections = Vec::new();
+        for handle in handles {
+            if let Ok(Ok(collection)) = handle.await {
+                collections.push(collection);
+            }
+        }
+        Ok(collections)
+    }
+
+    pub async fn get_playlists_from_tag(
+        server: MusicServer,
+        tag_id: &str,
+        order: TagPlaylistOrder,
+        page: u16,
+        limit: u16,
+    ) -> Result<Vec<Playlist>> {
+        match server {
+            MusicServer::Kuwo => {
+                kuwo::web_api::playlist_tag::get_playlists_from_tag(tag_id, order, page, limit)
+                    .await
+            }
+            MusicServer::Netease => {
+                netease::web_api::playlist_tag::get_playlists_from_tag(tag_id, order, page, limit)
+                    .await
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use crate::data::interface::{
-        music_aggregator::Music, playlist::Playlist, server::MusicServer,
+    use crate::interface::{
+        music_aggregator::Music, playlist::Playlist, playlist_tag::TagPlaylistOrder,
+        server::MusicServer,
     };
 
     #[tokio::test]
@@ -683,15 +725,21 @@ mod test {
 
     #[tokio::test]
     async fn test_chart() {
-        let collections = super::MusicChartCollection::get_music_chart_collection()
+        let collections = super::ServerMusicChartCollection::get_music_chart_collection()
             .await
             .unwrap();
         println!("{:?}", collections);
 
         let first_collection = collections.first().unwrap();
-        let first_chart = first_collection.charts.first().unwrap();
+        let first_chart = first_collection
+            .collections
+            .first()
+            .unwrap()
+            .charts
+            .first()
+            .unwrap();
 
-        let musics = super::MusicChartCollection::get_musics_from_chart(
+        let musics = super::ServerMusicChartCollection::get_musics_from_chart(
             first_collection.server.clone(),
             &first_chart.id,
             1,
@@ -701,5 +749,34 @@ mod test {
         .unwrap();
 
         println!("{:?}", musics);
+    }
+
+    #[tokio::test]
+    async fn test_playlist_tag() {
+        let collections = super::ServerPlaylistTagCollection::get_playlist_tags()
+            .await
+            .unwrap();
+        println!("{:?}", collections);
+
+        let first_collection = collections.first().unwrap();
+        let first_tag = first_collection
+            .collections
+            .first()
+            .unwrap()
+            .tags
+            .first()
+            .unwrap();
+
+        let playlists = super::ServerPlaylistTagCollection::get_playlists_from_tag(
+            first_collection.server.clone(),
+            &first_tag.id,
+            TagPlaylistOrder::Hot,
+            1,
+            10,
+        )
+        .await
+        .unwrap();
+
+        println!("{:?}", playlists);
     }
 }

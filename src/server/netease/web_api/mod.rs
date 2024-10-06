@@ -6,6 +6,7 @@ pub mod lyric;
 pub mod music;
 pub mod music_info;
 pub mod playlist;
+pub mod playlist_tag;
 pub mod request;
 pub mod share_playlist;
 pub mod utils;

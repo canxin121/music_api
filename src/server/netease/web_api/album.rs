@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::{
-    data::interface::{playlist::Playlist, server::MusicServer},
+    interface::{playlist::Playlist, server::MusicServer},
     server::netease::model::Model,
     CLIENT,
 };
@@ -94,7 +94,7 @@ impl Into<Playlist> for Album {
         Playlist {
             from_db: false,
             server: Some(MusicServer::Netease),
-            type_field: crate::data::interface::playlist::PlaylistType::Album,
+            type_field: crate::interface::playlist::PlaylistType::Album,
             identity: self.id.to_string(),
             name: self.name,
             summary: Some(self.description),

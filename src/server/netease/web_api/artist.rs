@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::{
-    data::interface::{self, playlist::Playlist, quality::Quality, server::MusicServer},
+    interface::{self, playlist::Playlist, quality::Quality, server::MusicServer},
     server::netease,
 };
 

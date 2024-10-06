@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use urlencoding::encode;
 
 use crate::{
-    data::interface::{artist::Artist, playlist::Playlist, server::MusicServer},
+    interface::{artist::Artist, playlist::Playlist, server::MusicServer},
     server::kuwo,
     CLIENT,
 };
@@ -105,7 +105,7 @@ impl Into<Playlist> for SearchMusicList {
     fn into(self) -> Playlist {
         Playlist {
             server: Some(MusicServer::Kuwo),
-            type_field: crate::data::interface::playlist::PlaylistType::UserPlaylist,
+            type_field: crate::interface::playlist::PlaylistType::UserPlaylist,
             identity: self.playlistid,
             name: decode_html_entities(self.name),
             summary: Some(decode_html_entities(self.intro)),
@@ -239,12 +239,12 @@ impl Into<crate::server::kuwo::model::Model> for MusiclistMusic {
         let artists: Vec<Artist> = artist_names
             .into_iter()
             .zip(artist_ids.into_iter().chain(std::iter::repeat("")))
-            .map(|(name, id)| crate::data::interface::artist::Artist {
+            .map(|(name, id)| crate::interface::artist::Artist {
                 name: name.to_string(),
                 id: id.parse().ok(),
             })
             .collect();
-        let artists = crate::data::interface::artist::ArtistVec::from(artists);
+        let artists = crate::interface::artist::ArtistVec::from(artists);
 
         crate::server::kuwo::model::Model {
             name: self.name,

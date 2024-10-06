@@ -1,8 +1,6 @@
-use crate::data::{
-    interface::{
-        artist::ArtistVec, music_aggregator::Music, quality::QualityVec, server::MusicServer,
-    },
-    models::music_aggregator,
+use crate::data::models::music_aggregator;
+use crate::interface::{
+    artist::ArtistVec, music_aggregator::Music, quality::QualityVec, server::MusicServer,
 };
 use anyhow::Result;
 use sea_orm::entity::prelude::*;

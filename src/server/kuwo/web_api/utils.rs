@@ -1,4 +1,4 @@
-use crate::{data::interface::quality::Quality, CLIENT};
+use crate::{interface::quality::Quality, CLIENT};
 
 pub fn decode_html_entities(input: String) -> String {
     input

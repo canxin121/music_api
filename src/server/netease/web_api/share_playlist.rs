@@ -3,8 +3,8 @@ use serde_json::json;
 
 use serde_json::Value;
 
-use crate::data::interface::playlist::Playlist;
-use crate::data::interface::server::MusicServer;
+use crate::interface::playlist::Playlist;
+use crate::interface::server::MusicServer;
 use crate::server::netease::web_api::encrypt::linux_api;
 use crate::CLIENT;
 use anyhow::Result;
@@ -131,7 +131,7 @@ impl Into<Playlist> for GetMusicInnerPlaylist {
         Playlist {
             from_db: false,
             server: Some(MusicServer::Netease),
-            type_field: crate::data::interface::playlist::PlaylistType::UserPlaylist,
+            type_field: crate::interface::playlist::PlaylistType::UserPlaylist,
             identity: self.id.to_string(),
             name: self.name,
             summary: self.description,

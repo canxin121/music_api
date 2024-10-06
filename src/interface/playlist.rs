@@ -7,9 +7,9 @@ use sea_orm::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::data::{
+use crate::{
+    data::models::{music_aggregator, playlist, playlist_music_junction},
     interface::utils::find_duplicate_music_agg,
-    models::{music_aggregator, playlist, playlist_music_junction},
 };
 use anyhow::Result;
 
@@ -422,7 +422,7 @@ mod test_playlist {
     use sea_orm_migration::MigratorTrait as _;
     use serial_test::serial;
 
-    use crate::data::{interface::database::set_db, migrations::Migrator};
+    use crate::{data::migrations::Migrator, interface::database::set_db};
 
     use super::*;
     async fn re_init_db() {

@@ -1,4 +1,5 @@
 pub mod data;
+pub mod interface;
 pub mod server;
 
 use std::sync::{Arc, LazyLock};

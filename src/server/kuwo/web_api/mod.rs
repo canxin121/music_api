@@ -6,11 +6,12 @@ pub mod share_playlist;
 pub mod utils;
 pub mod artist;
 pub mod chart;
+pub mod playlist_tag;
 
 #[cfg(test)]
 mod kuwo_web_api_test {
     use crate::{
-        data::interface::playlist::Playlist,
+        interface::playlist::Playlist,
         server::kuwo::{
             self,
             web_api::{

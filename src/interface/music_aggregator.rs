@@ -320,15 +320,12 @@ mod test_music_aggregator {
     use sea_orm_migration::MigratorTrait as _;
     use serial_test::serial;
 
-    use crate::data::{
-        interface::{
-            database::{get_db, set_db},
-            music_aggregator::MusicAggregator,
-            playlist::Playlist,
-            server::MusicServer,
-        },
-        migrations::Migrator,
-        models::music_aggregator,
+    use crate::data::{migrations::Migrator, models::music_aggregator};
+    use crate::interface::{
+        database::{get_db, set_db},
+        music_aggregator::MusicAggregator,
+        playlist::Playlist,
+        server::MusicServer,
     };
 
     async fn re_init_db() {

@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    data::interface::{
+    interface::{
         artist::Artist,
-        chart::{MusicChart, MusicChartCollection},
+        music_chart::{MusicChart, MusicChartCollection, ServerMusicChartCollection},
+        server::MusicServer,
     },
     server::kuwo::{self, web_api::utils::get_music_rid_pic},
     CLIENT,
@@ -11,10 +12,14 @@ use crate::{
 
 use super::utils::parse_qualities_formats;
 
-pub async fn get_music_chart_collection() -> anyhow::Result<Vec<MusicChartCollection>> {
-    let url = "http://wapi.kuwo.cn/api/pc/bang/list";
-    let result: KuwoMusicChartsCollectionResult = CLIENT.get(url).send().await?.json().await?;
-    result.child.into_iter().map(|c| Ok(c.into())).collect()
+pub async fn get_music_chart_collection() -> anyhow::Result<ServerMusicChartCollection> {
+    Ok(CLIENT
+        .get("http://wapi.kuwo.cn/api/pc/bang/list")
+        .send()
+        .await?
+        .json::<KuwoMusicChartsCollectionResult>()
+        .await?
+        .into())
 }
 
 pub async fn get_musics_from_chart(
@@ -62,7 +67,13 @@ mod test {
     #[tokio::test]
     async fn test_chart_musics() {
         let chart_collections = get_music_chart_collection().await.unwrap();
-        let first_chart = chart_collections.first().unwrap().charts.first().unwrap();
+        let first_chart = chart_collections
+            .collections
+            .first()
+            .unwrap()
+            .charts
+            .first()
+            .unwrap();
         println!("{:?}", first_chart);
         let musics = get_musics_from_chart(&first_chart.id, 1, 30).await.unwrap();
         println!("{:?}", musics)
@@ -93,6 +104,15 @@ pub struct KuwoMusicChartsCollectionResult {
     // pub pic5: String,
 }
 
+impl Into<ServerMusicChartCollection> for KuwoMusicChartsCollectionResult {
+    fn into(self) -> ServerMusicChartCollection {
+        ServerMusicChartCollection {
+            server: MusicServer::Kuwo,
+            collections: self.child.into_iter().map(|c| c.into()).collect(),
+        }
+    }
+}
+
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct KuwoMusicCollection {
@@ -121,7 +141,6 @@ impl Into<MusicChartCollection> for KuwoMusicCollection {
     fn into(self) -> MusicChartCollection {
         MusicChartCollection {
             name: self.name,
-            server: crate::data::interface::server::MusicServer::Kuwo,
             charts: self.child.into_iter().map(|c| c.into()).collect(),
             summary: Some(self.disname),
         }
@@ -246,12 +265,12 @@ impl Into<kuwo::model::Model> for KuwoChartMusic {
         let artists: Vec<Artist> = artist_names
             .into_iter()
             .zip(artist_ids.into_iter().chain(std::iter::repeat("")))
-            .map(|(name, id)| crate::data::interface::artist::Artist {
+            .map(|(name, id)| crate::interface::artist::Artist {
                 name: name.to_string(),
                 id: id.parse().ok(),
             })
             .collect();
-        let artists = crate::data::interface::artist::ArtistVec::from(artists);
+        let artists = crate::interface::artist::ArtistVec::from(artists);
         kuwo::model::Model {
             name: self.name,
             music_id: self.id,

@@ -1,4 +1,4 @@
-use crate::data::interface::playlist_subscription::PlayListSubscriptionVec;
+use crate::interface::playlist_subscription::PlayListSubscriptionVec;
 use anyhow::Result;
 use sea_orm::{entity::prelude::*, ActiveValue::NotSet, Set};
 use serde::{Deserialize, Serialize};

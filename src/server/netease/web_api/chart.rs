@@ -1,5 +1,5 @@
 use crate::{
-    data::interface::chart::{MusicChart, MusicChartCollection},
+    interface::music_chart::{MusicChart, MusicChartCollection, ServerMusicChartCollection},
     server::netease::{self, web_api::encrypt::weapi},
     CLIENT,
 };
@@ -8,15 +8,14 @@ use serde_json::json;
 
 use super::music::NeteaseMusic;
 
-pub async fn get_music_chart_collection() -> anyhow::Result<Vec<MusicChartCollection>> {
-    let result:NeteaseMusicChartCollection = CLIENT
-            .post("https://music.163.com/api/toplist")
-            .header("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.90 Safari/537.36")
-            .header("origin", "https://music.163.com")
-            // .form(&weapi(&json!({}).to_string())?)
-            .send()
-            .await?.json().await?;
-    Ok(vec![result.into()])
+pub async fn get_music_chart_collection() -> anyhow::Result<ServerMusicChartCollection> {
+    Ok(CLIENT
+        .post("https://music.163.com/api/toplist")
+        .header("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.90 Safari/537.36")
+        .header("origin", "https://music.163.com")
+        // .form(&weapi(&json!({}).to_string())?)
+        .send()
+        .await?.json::<NeteaseMusicChartCollectionResult>().await?.into())
 }
 
 pub async fn get_musics_from_chart(
@@ -66,19 +65,27 @@ mod test {
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct NeteaseMusicChartCollection {
+pub struct NeteaseMusicChartCollectionResult {
     // pub code: i64,
     pub list: Vec<NeteaseMusicChart>,
     // pub artist_toplist: ArtistToplist,
 }
 
-impl Into<MusicChartCollection> for NeteaseMusicChartCollection {
+impl Into<MusicChartCollection> for NeteaseMusicChartCollectionResult {
     fn into(self) -> MusicChartCollection {
         MusicChartCollection {
             name: "网易云榜单".to_string(),
             summary: None,
-            server: crate::data::interface::server::MusicServer::Netease,
             charts: self.list.into_iter().map(|chart| chart.into()).collect(),
+        }
+    }
+}
+
+impl Into<ServerMusicChartCollection> for NeteaseMusicChartCollectionResult {
+    fn into(self) -> ServerMusicChartCollection {
+        ServerMusicChartCollection {
+            server: crate::interface::server::MusicServer::Netease,
+            collections: vec![self.into()],
         }
     }
 }
