@@ -1,5 +1,6 @@
 pub mod album;
 pub mod artist;
+pub mod chart;
 pub mod encrypt;
 pub mod lyric;
 pub mod music;

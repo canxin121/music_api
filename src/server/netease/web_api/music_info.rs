@@ -3,7 +3,7 @@ use serde_json::json;
 
 use crate::{server::netease::model::Model, CLIENT};
 
-use super::{encrypt::weapi, music::Song};
+use super::{encrypt::weapi, music::NeteaseMusic};
 use anyhow::Result;
 
 #[derive(Serialize)]
@@ -14,7 +14,7 @@ struct CItem {
 #[derive(Deserialize)]
 struct GetMusicResponse {
     #[serde(default)]
-    songs: Vec<Song>,
+    songs: Vec<NeteaseMusic>,
 }
 
 pub async fn get_musics_info(music_ids: &[i64]) -> Result<Vec<Model>> {

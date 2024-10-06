@@ -47,13 +47,13 @@ pub struct SearchMusicResult {
 pub struct InnerResult {
     // pub search_qc_reminder: Value,
     #[serde(default)]
-    pub songs: Vec<Song>,
+    pub songs: Vec<NeteaseMusic>,
     // pub song_count: i64,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Song {
+pub struct NeteaseMusic {
     pub name: String,
     pub id: i64,
     // pub pst: i64,
@@ -105,7 +105,7 @@ pub struct Song {
     // pub tns: Vec<String>,
 }
 
-impl Song {
+impl NeteaseMusic {
     pub fn get_qualities(&self) -> Vec<Quality> {
         let mut qualities = Vec::new();
         if let Some(hr) = &self.hr {
@@ -152,7 +152,7 @@ impl Song {
     }
 }
 
-impl Into<Model> for Song {
+impl Into<Model> for NeteaseMusic {
     fn into(self) -> Model {
         let quality_vec = self.get_qualities().into();
         Model {
@@ -211,7 +211,7 @@ pub struct H {
     pub fid: i64,
     pub size: i64,
     pub vd: f64,
-    pub sr: i64,
+    pub sr: Option<i64>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -221,7 +221,7 @@ pub struct M {
     pub fid: i64,
     pub size: i64,
     pub vd: f64,
-    pub sr: i64,
+    pub sr: Option<i64>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -231,7 +231,7 @@ pub struct L {
     pub fid: i64,
     pub size: i64,
     pub vd: f64,
-    pub sr: i64,
+    pub sr: Option<i64>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -241,7 +241,7 @@ pub struct Sq {
     pub fid: i64,
     pub size: i64,
     pub vd: f64,
-    pub sr: i64,
+    pub sr: Option<i64>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -251,7 +251,7 @@ pub struct Hr {
     pub fid: i64,
     pub size: i64,
     pub vd: f64,
-    pub sr: i64,
+    pub sr: Option<i64>,
 }
 
 // #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]

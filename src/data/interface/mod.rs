@@ -1,4 +1,5 @@
 pub mod artist;
+pub mod chart;
 pub mod database;
 pub mod json;
 pub mod music_aggregator;

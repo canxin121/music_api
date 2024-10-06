@@ -1,11 +1,13 @@
 use anyhow::Result;
 use kuwo::web_api::share_playlist::get_kuwo_music_list_from_share;
 use netease::web_api::share_playlist::get_netease_music_list_from_share;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 pub mod kuwo;
 pub mod netease;
 
+use crate::data::interface::chart::MusicChartCollection;
 use crate::data::interface::server::MusicServer;
 
 use super::data::interface::music_aggregator::Music;
@@ -112,23 +114,154 @@ impl Music {
             }
         }
     }
-}
+    pub async fn get_lyric(&self) -> Result<String> {
+        match self.server {
+            MusicServer::Kuwo => kuwo::web_api::lyric::get_kuwo_lyric(&self.identity).await,
+            MusicServer::Netease => {
+                netease::web_api::lyric::get_netease_lyric(&self.identity).await
+            }
+        }
+    }
 
-#[cfg(test)]
-mod server_music_test {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_search() {
-        let musics =
-            Music::search_online(vec![MusicServer::Kuwo], "Lemon 米津玄师".to_string(), 1, 10)
-                .await
-                .unwrap();
-        println!("{:?}", musics);
+    pub fn get_cover(&self, size: u16) -> Option<String> {
+        match self.server {
+            MusicServer::Kuwo => self.cover.clone().and_then(|cover| {
+                Some(
+                    cover
+                        .replace("_700.", &format!("_{}.", size))
+                        .replace("/500/", &format!("/{}/", size)),
+                )
+            }),
+            MusicServer::Netease => self
+                .cover
+                .clone()
+                .and_then(|c| Some(format!("{c}?param={size}y{size}"))),
+        }
     }
 }
 
 impl MusicAggregator {
+    /// takes ownership
+    pub async fn search_online(
+        aggs: Vec<MusicAggregator>,
+        servers: Vec<MusicServer>,
+        content: String,
+        page: u16,
+        size: u16,
+    ) -> anyhow::Result<Vec<Self>> {
+        if servers.is_empty() {
+            return Err(anyhow::anyhow!("No servers provided".to_string()));
+        }
+
+        let mut map = {
+            if !aggs.is_empty() {
+                let pair = aggs
+                    .into_iter()
+                    .enumerate()
+                    .collect::<Vec<(usize, MusicAggregator)>>();
+                let map: HashMap<String, (usize, MusicAggregator)> = pair
+                    .into_iter()
+                    .map(|pair| (pair.1.identity(), pair))
+                    .collect();
+                map
+            } else {
+                HashMap::new()
+            }
+        };
+
+        let mut success = false;
+        if let Some(musics) = Music::search_online(servers, content, page, size)
+            .await
+            .ok()
+        {
+            for music in musics {
+                let identity = format!("{}#+#{}", music.name, {
+                    let mut artists = music
+                        .artists
+                        .iter()
+                        .map(|x| x.name.clone())
+                        .collect::<Vec<String>>();
+                    artists.sort();
+                    artists.join("&")
+                })
+                .to_lowercase();
+                if let Some(pair) = map.get_mut(&identity) {
+                    if !pair.1.musics.iter().any(|x| x.server == music.server) {
+                        pair.1.musics.push(music);
+                    }
+                } else {
+                    let index = map.len();
+                    map.insert(
+                        identity.clone(),
+                        (
+                            index,
+                            MusicAggregator {
+                                name: music.name.clone(),
+                                artist: music
+                                    .artists
+                                    .iter()
+                                    .map(|x| x.name.clone())
+                                    .collect::<Vec<String>>()
+                                    .join("&"),
+                                from_db: false,
+                                default_server: music.server.clone(),
+                                musics: vec![music],
+                                order: None,
+                            },
+                        ),
+                    );
+                }
+            }
+            success = true;
+        }
+
+        let mut pairs: Vec<(usize, MusicAggregator)> =
+            map.into_iter().map(|(_, pair)| pair).collect();
+        pairs.sort_by(|a, b| a.0.cmp(&b.0));
+        let aggs = pairs.into_iter().map(|pair| pair.1).collect();
+
+        if success {
+            Ok(aggs)
+        } else {
+            Err(anyhow::anyhow!("Music search failed".to_string()))
+        }
+    }
+
+    /// takes ownership
+    pub async fn fetch_server_online(
+        mut self,
+        mut servers: Vec<MusicServer>,
+    ) -> anyhow::Result<Self> {
+        servers.retain(|x| !self.musics.iter().any(|y| y.server == *x));
+
+        if servers.is_empty() {
+            return Err(anyhow::anyhow!("No more servers to fetch".to_string()));
+        }
+        match Music::search_online(servers.clone(), self.identity(), 1, 10).await {
+            Ok(musics) => {
+                if musics.is_empty() {
+                    return Err(anyhow::anyhow!("No musics found from servers".to_string()));
+                }
+                for server in servers {
+                    if let Some(music) = musics.iter().find(|x| {
+                        x.server == server && x.name == self.name && {
+                            let mut artists = x
+                                .artists
+                                .iter()
+                                .map(|artist| artist.name.as_str())
+                                .collect::<Vec<&str>>();
+                            artists.sort();
+                            artists.join("&") == self.artist
+                        }
+                    }) {
+                        self.musics.push(music.clone());
+                    }
+                }
+                Ok(self)
+            }
+            Err(e) => Err(anyhow::anyhow!(format!("Failed to fetch servers: {}", e))),
+        }
+    }
     pub async fn fetch_artist_music_aggregators(
         server: MusicServer,
         artist_id: &str,
@@ -341,29 +474,49 @@ impl Playlist {
     }
 }
 
-impl Music {
-    pub async fn get_lyric(&self) -> Result<String> {
-        match self.server {
-            MusicServer::Kuwo => kuwo::web_api::lyric::get_kuwo_lyric(&self.identity).await,
-            MusicServer::Netease => {
-                netease::web_api::lyric::get_netease_lyric(&self.identity).await
+impl MusicChartCollection {
+    pub async fn get_music_chart_collection() -> Result<Vec<MusicChartCollection>> {
+        let mut handles = Vec::with_capacity(MusicServer::length());
+        // todo: add more servers
+        handles.push(tokio::spawn(async move {
+            kuwo::web_api::chart::get_music_chart_collection().await
+        }));
+        handles.push(tokio::spawn(async move {
+            netease::web_api::chart::get_music_chart_collection().await
+        }));
+
+        let mut collections = Vec::new();
+        for handle in handles {
+            if let Ok(Ok(mut collection)) = handle.await {
+                collections.append(&mut collection);
             }
         }
+        Ok(collections)
     }
 
-    pub fn get_cover(&self, size: u16) -> Option<String> {
-        match self.server {
-            MusicServer::Kuwo => self.cover.clone().and_then(|cover| {
-                Some(
-                    cover
-                        .replace("_700.", &format!("_{}.", size))
-                        .replace("/500/", &format!("/{}/", size)),
-                )
-            }),
-            MusicServer::Netease => self
-                .cover
-                .clone()
-                .and_then(|c| Some(format!("{c}?param={size}y{size}"))),
+    pub async fn get_musics_from_chart(
+        server: MusicServer,
+        id: &str,
+        page: u16,
+        limit: u16,
+    ) -> Result<Vec<MusicAggregator>> {
+        match server {
+            MusicServer::Kuwo => kuwo::web_api::chart::get_musics_from_chart(id, page, limit)
+                .await
+                .and_then(|musics| {
+                    Ok(musics
+                        .into_iter()
+                        .map(|music| MusicAggregator::from_music(music.into_music(false)))
+                        .collect())
+                }),
+            MusicServer::Netease => netease::web_api::chart::get_musics_from_chart(id, page, limit)
+                .await
+                .and_then(|musics| {
+                    Ok(musics
+                        .into_iter()
+                        .map(|music| MusicAggregator::from_music(music.into_music(false)))
+                        .collect())
+                }),
         }
     }
 }
@@ -526,5 +679,27 @@ mod test {
                 assert!(cover.contains("100"));
             }
         }
+    }
+
+    #[tokio::test]
+    async fn test_chart() {
+        let collections = super::MusicChartCollection::get_music_chart_collection()
+            .await
+            .unwrap();
+        println!("{:?}", collections);
+
+        let first_collection = collections.first().unwrap();
+        let first_chart = first_collection.charts.first().unwrap();
+
+        let musics = super::MusicChartCollection::get_musics_from_chart(
+            first_collection.server.clone(),
+            &first_chart.id,
+            1,
+            10,
+        )
+        .await
+        .unwrap();
+
+        println!("{:?}", musics);
     }
 }
