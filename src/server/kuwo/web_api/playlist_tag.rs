@@ -201,6 +201,7 @@ impl Into<Playlist> for TagPlaylist {
             play_time: self.listencnt.parse().ok(),
             music_num: self.total.parse().ok(),
             subscription: None,
+            collection_id: None,
         }
     }
 }

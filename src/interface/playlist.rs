@@ -34,6 +34,7 @@ pub struct Playlist {
     #[serde(rename = "type")]
     pub type_field: PlaylistType,
     pub identity: String,
+    pub collection_id: Option<i64>,
     pub order: Option<i64>,
     pub name: String,
     pub summary: Option<String>,
@@ -61,6 +62,7 @@ impl From<playlist::Model> for Playlist {
             music_num: None,
             subscription: value.subscriptions.and_then(|s| Some(s.0)),
             order: Some(value.order),
+            collection_id: Some(value.collection_id),
         }
     }
 }
@@ -86,6 +88,7 @@ impl Playlist {
             music_num: None,
             subscription: Some(subscriptions),
             order: None,
+            collection_id: None,
         }
     }
 
@@ -101,7 +104,7 @@ impl Playlist {
 
     /// update db playlist info
     pub async fn update_to_db(&self) -> Result<Self> {
-        if !self.from_db || self.identity.is_empty() {
+        if !self.from_db || self.identity.is_empty() || self.collection_id.is_none() {
             return Err(anyhow::anyhow!(
                 "Can't update playlist from non-database server."
             ));
@@ -121,6 +124,7 @@ impl Playlist {
                     .subscription
                     .clone()
                     .and_then(|s| Some(PlayListSubscriptionVec(s)))),
+                collection_id: Set(self.collection_id.unwrap()),
             };
             let model = playlist::Entity::update(playlist).exec(&db).await?;
             Ok(model.into())
@@ -130,7 +134,7 @@ impl Playlist {
     }
 
     // insert a playlist to db
-    pub async fn insert_to_db(&self) -> Result<i64> {
+    pub async fn insert_to_db(&self, collection_id: i64) -> Result<i64> {
         let db: sea_orm::DatabaseConnection = get_db()
             .await
             .ok_or(anyhow::anyhow!("Database is not inited."))?;
@@ -155,6 +159,7 @@ impl Playlist {
             self.summary.clone(),
             self.cover.clone(),
             max_id + 1,
+            collection_id,
             self.subscription
                 .clone()
                 .and_then(|s| Some(PlayListSubscriptionVec(s))),
@@ -422,7 +427,10 @@ mod test_playlist {
     use sea_orm_migration::MigratorTrait as _;
     use serial_test::serial;
 
-    use crate::{data::migrations::Migrator, interface::database::set_db};
+    use crate::{
+        data::migrations::Migrator,
+        interface::{database::set_db, playlist_collection::PlaylistCollection},
+    };
 
     use super::*;
     async fn re_init_db() {
@@ -450,9 +458,22 @@ mod test_playlist {
             None,
             vec![],
         );
-        playlist.insert_to_db().await.unwrap();
-        playlist.insert_to_db().await.unwrap();
-        playlist.insert_to_db().await.unwrap();
+        let playlist_collection = PlaylistCollection::new("test".to_string());
+        let id = playlist_collection.insert_to_db().await.unwrap();
+        let new_playlist_collection = PlaylistCollection::find_in_db(id).await.unwrap();
+
+        playlist
+            .insert_to_db(new_playlist_collection.id)
+            .await
+            .unwrap();
+        playlist
+            .insert_to_db(new_playlist_collection.id)
+            .await
+            .unwrap();
+        playlist
+            .insert_to_db(new_playlist_collection.id)
+            .await
+            .unwrap();
         let playlists = Playlist::get_from_db().await.unwrap();
         assert!(playlists.len() == 3);
     }
@@ -467,7 +488,15 @@ mod test_playlist {
             None,
             vec![],
         );
-        playlist.insert_to_db().await.unwrap();
+
+        let playlist_collection = PlaylistCollection::new("test".to_string());
+        let id = playlist_collection.insert_to_db().await.unwrap();
+        let new_playlist_collection = PlaylistCollection::find_in_db(id).await.unwrap();
+
+        playlist
+            .insert_to_db(new_playlist_collection.id)
+            .await
+            .unwrap();
         let playlists = Playlist::get_from_db().await.unwrap();
         assert!(playlists.len() == 1);
         playlists
@@ -490,7 +519,13 @@ mod test_playlist {
             None,
             vec![],
         );
-        playlist.insert_to_db().await.unwrap();
+        let playlist_collection = PlaylistCollection::new("test".to_string());
+        let id = playlist_collection.insert_to_db().await.unwrap();
+        let new_playlist_collection = PlaylistCollection::find_in_db(id).await.unwrap();
+        playlist
+            .insert_to_db(new_playlist_collection.id)
+            .await
+            .unwrap();
 
         let playlist = Playlist::get_from_db()
             .await
@@ -526,7 +561,14 @@ mod test_playlist {
         let playlist = playlists.await.unwrap().into_iter().next().unwrap();
         let aggs = playlist.fetch_musics_online(1, 30).await.unwrap();
 
-        let insert_id = playlist.insert_to_db().await.unwrap();
+        let playlist_collection = PlaylistCollection::new("test".to_string());
+        let id = playlist_collection.insert_to_db().await.unwrap();
+        let new_playlist_collection = PlaylistCollection::find_in_db(id).await.unwrap();
+
+        let insert_id = playlist
+            .insert_to_db(new_playlist_collection.id)
+            .await
+            .unwrap();
         let playlist = Playlist::find_in_db(insert_id).await.unwrap();
         // 测量此处耗时
         let start = std::time::Instant::now();
@@ -547,7 +589,14 @@ mod test_playlist {
         let playlist = playlists.await.unwrap().into_iter().next().unwrap();
         let aggs = playlist.fetch_musics_online(1, 30).await.unwrap();
 
-        let insert_id = playlist.insert_to_db().await.unwrap();
+        let playlist_collection = PlaylistCollection::new("test".to_string());
+        let id = playlist_collection.insert_to_db().await.unwrap();
+        let new_playlist_collection = PlaylistCollection::find_in_db(id).await.unwrap();
+
+        let insert_id = playlist
+            .insert_to_db(new_playlist_collection.id)
+            .await
+            .unwrap();
         let playlist = Playlist::find_in_db(insert_id).await.unwrap();
         playlist.add_aggs_to_db(&aggs).await.unwrap();
 
@@ -569,7 +618,15 @@ mod test_playlist {
                 share: "分享Z殘心的歌单《米津玄师》https://y.music.163.com/m/playlist?app_version=8.9.20&id=6614178314&userid=317416193&dlt=0846&creatorId=317416193 (@网易云音乐)".to_string(),
             }],
         );
-        let playlist_id = playlist.insert_to_db().await.unwrap();
+
+        let playlist_collection = PlaylistCollection::new("test".to_string());
+        let id = playlist_collection.insert_to_db().await.unwrap();
+        let new_playlist_collection = PlaylistCollection::find_in_db(id).await.unwrap();
+
+        let playlist_id = playlist
+            .insert_to_db(new_playlist_collection.id)
+            .await
+            .unwrap();
         let playlist = Playlist::find_in_db(playlist_id).await.unwrap();
         let result = playlist.update_subscription().await.unwrap();
         println!("{:?}", result);
@@ -590,7 +647,15 @@ mod test_playlist {
                 share: "分享Z殘心的歌单《米津玄师》https://y.music.163.com/m/playlist?app_version=8.9.20&id=6614178314&userid=317416193&dlt=0846&creatorId=317416193 (@网易云音乐)".to_string(),
             }],
         );
-        let playlist_id = playlist.insert_to_db().await.unwrap();
+
+        let playlist_collection = PlaylistCollection::new("test".to_string());
+        let id = playlist_collection.insert_to_db().await.unwrap();
+        let new_playlist_collection = PlaylistCollection::find_in_db(id).await.unwrap();
+
+        let playlist_id = playlist
+            .insert_to_db(new_playlist_collection.id)
+            .await
+            .unwrap();
         let playlist = Playlist::find_in_db(playlist_id).await.unwrap();
         playlist.update_subscription().await.unwrap();
 

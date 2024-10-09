@@ -374,6 +374,7 @@ impl Into<Playlist> for Album {
             subscription: None,
             from_db: false,
             order: None,
+            collection_id: None,
         }
     }
 }

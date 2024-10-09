@@ -47,6 +47,7 @@ impl Into<Playlist> for ShareMusicList {
     fn into(self) -> Playlist {
         Playlist {
             from_db: false,
+            collection_id: None,
             server: Some(MusicServer::Kuwo),
             type_field: crate::interface::playlist::PlaylistType::UserPlaylist,
             identity: self.id.to_string(),

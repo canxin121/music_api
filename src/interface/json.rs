@@ -11,7 +11,7 @@ use crate::{
 use super::{
     database::{get_db, reinit_db},
     music_aggregator::MusicAggregator,
-    playlist::Playlist,
+    playlist::Playlist, playlist_collection::PlaylistCollection,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -228,8 +228,12 @@ impl PlaylistJsonVec {
 
     /// takes ownership
     async fn insert_to_db(self) -> anyhow::Result<()> {
+        let playlist_collection = PlaylistCollection::new("test".to_string());
+        let id = playlist_collection.insert_to_db().await.unwrap();
+        let new_playlist_collection = PlaylistCollection::find_in_db(id).await.unwrap();
+
         for playlistjson in self.0 {
-            let id = playlistjson.playlist.insert_to_db().await?;
+            let id = playlistjson.playlist.insert_to_db(new_playlist_collection.id).await?;
             let inserted_playlist = Playlist::find_in_db(id).await.ok_or(anyhow::anyhow!(
                 "Failed to find playlist with id {} after insertion",
                 id

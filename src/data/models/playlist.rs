@@ -9,6 +9,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = true)]
     pub id: i64,
     pub order: i64,
+    pub collection_id: i64,
     pub name: String,
     #[sea_orm(nullable)]
     pub summary: Option<String>,
@@ -23,6 +24,7 @@ impl ActiveModel {
         summary: Option<String>,
         cover: Option<String>,
         order: i64,
+        collection_id: i64,
         subscriptions: Option<PlayListSubscriptionVec>,
     ) -> Self {
         Self {
@@ -32,6 +34,7 @@ impl ActiveModel {
             cover: Set(cover),
             subscriptions: Set(subscriptions),
             order: Set(order),
+            collection_id: Set(collection_id),
         }
     }
 }
@@ -39,6 +42,7 @@ impl ActiveModel {
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
     PlaylistMusicJunction,
+    PlaylistCollection,
 }
 
 impl RelationTrait for Relation {
@@ -51,6 +55,11 @@ impl RelationTrait for Relation {
                     .on_delete(ForeignKeyAction::Cascade)
                     .into()
             }
+
+            Relation::PlaylistCollection => Entity::belongs_to(super::playlist_collection::Entity)
+                .from(Column::CollectionId)
+                .to(super::playlist_collection::Column::Id)
+                .into(),
         }
     }
 }
@@ -75,6 +84,12 @@ impl Related<super::music_aggregator::Entity> for Entity {
 impl Related<super::playlist_music_junction::Entity> for Entity {
     fn to() -> RelationDef {
         super::playlist_music_junction::Relation::Playlist.def()
+    }
+}
+
+impl Related<super::playlist_collection::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::playlist_collection::Relation::Playlist.def()
     }
 }
 

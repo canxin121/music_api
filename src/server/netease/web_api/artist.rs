@@ -500,6 +500,7 @@ impl Into<interface::playlist::Playlist> for HotAlbum {
             from_db: false,
             server: Some(MusicServer::Netease),
             type_field: interface::playlist::PlaylistType::Album,
+            collection_id: None,
             identity: self.id.to_string(),
             order: None,
             name: self.name,

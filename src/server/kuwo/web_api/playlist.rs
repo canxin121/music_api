@@ -115,6 +115,7 @@ impl Into<Playlist> for SearchMusicList {
             play_time: self.playcnt.parse().ok(),
             music_num: self.songnum.parse().ok(),
             subscription: None,
+            collection_id: None,
             from_db: false,
             order: None,
         }

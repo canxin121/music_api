@@ -1,10 +1,10 @@
 use async_trait::async_trait;
 use sea_orm_migration::{
     prelude::*,
-    schema::{big_integer, json_null, string, string_null},
+    schema::{big_integer, string},
 };
 
-use crate::data::models::playlist::Column;
+use crate::data::models::playlist_collection::Column;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -15,7 +15,7 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(PlaylistTable::Playlist)
+                    .table(PlaylistCollectionTable::PlaylistCollection)
                     .col(
                         big_integer(Column::Id)
                             .auto_increment()
@@ -23,17 +23,7 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     .col(string(Column::Name))
-                    .col(string_null(Column::Summary))
-                    .col(string_null(Column::Cover))
                     .col(big_integer(Column::Order).not_null())
-                    .col(json_null(Column::Subscriptions))
-                    .col(big_integer(Column::CollectionId).not_null())
-                    .foreign_key(
-                        ForeignKey::create()
-                            .from(PlaylistTable::Playlist, Column::CollectionId)
-                            .to(super::create_playlist_collection_table::PlaylistCollectionTable::PlaylistCollection, crate::data::models::playlist_collection::Column::Id)
-                            .on_delete(ForeignKeyAction::Cascade),
-                    )
                     .if_not_exists()
                     .to_owned(),
             )
@@ -44,7 +34,7 @@ impl MigrationTrait for Migration {
         manager
             .drop_table(
                 Table::drop()
-                    .table(PlaylistTable::Playlist)
+                    .table(PlaylistCollectionTable::PlaylistCollection)
                     .if_exists()
                     .to_owned(),
             )
@@ -53,6 +43,6 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-pub enum PlaylistTable {
-    Playlist,
+pub enum PlaylistCollectionTable {
+    PlaylistCollection,
 }

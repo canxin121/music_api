@@ -10,3 +10,4 @@ pub mod results;
 pub mod server;
 pub mod playlist_tag;
 pub mod utils;
+pub mod playlist_collection;

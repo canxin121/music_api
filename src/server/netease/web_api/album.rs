@@ -94,6 +94,7 @@ impl Into<Playlist> for Album {
         Playlist {
             from_db: false,
             server: Some(MusicServer::Netease),
+            collection_id: None,
             type_field: crate::interface::playlist::PlaylistType::Album,
             identity: self.id.to_string(),
             name: self.name,

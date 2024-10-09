@@ -131,6 +131,7 @@ impl Into<Playlist> for GetMusicInnerPlaylist {
         Playlist {
             from_db: false,
             server: Some(MusicServer::Netease),
+            collection_id: None,
             type_field: crate::interface::playlist::PlaylistType::UserPlaylist,
             identity: self.id.to_string(),
             name: self.name,

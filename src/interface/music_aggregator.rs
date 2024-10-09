@@ -321,6 +321,7 @@ mod test_music_aggregator {
     use serial_test::serial;
 
     use crate::data::{migrations::Migrator, models::music_aggregator};
+    use crate::interface::playlist_collection::PlaylistCollection;
     use crate::interface::{
         database::{get_db, set_db},
         music_aggregator::MusicAggregator,
@@ -439,9 +440,12 @@ mod test_music_aggregator {
         )
         .await
         .unwrap();
-
+        let playlist_collection = PlaylistCollection::new("test".to_string());
+        let id = playlist_collection.insert_to_db().await.unwrap();
+        let new_playlist_collection = PlaylistCollection::find_in_db(id).await.unwrap();
+        
         for playlist in playlists {
-            let new_id = playlist.insert_to_db().await.unwrap();
+            let new_id = playlist.insert_to_db(new_playlist_collection.id).await.unwrap();
             let inserted_playlist = Playlist::find_in_db(new_id).await.unwrap();
             inserted_playlist
                 .add_aggs_to_db(&playlist.fetch_musics_online(1, 2333).await.unwrap())

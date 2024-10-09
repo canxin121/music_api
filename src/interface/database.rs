@@ -82,7 +82,8 @@ pub async fn reinit_db() -> Result<(), anyhow::Error> {
 #[cfg(test)]
 mod test {
     use crate::interface::{
-        music_aggregator::MusicAggregator, playlist::Playlist, server::MusicServer,
+        music_aggregator::MusicAggregator, playlist::Playlist,
+        playlist_collection::PlaylistCollection, server::MusicServer,
     };
 
     pub use super::*;
@@ -97,8 +98,15 @@ mod test {
         )
         .await
         .unwrap();
+        let playlist_collection = PlaylistCollection::new("test".to_string());
+        let id = playlist_collection.insert_to_db().await.unwrap();
+        let new_playlist_collection = PlaylistCollection::find_in_db(id).await.unwrap();
+
         let new_playlist = Playlist::new("test".to_string(), None, None, vec![]);
-        let id = new_playlist.insert_to_db().await.unwrap();
+        let id = new_playlist
+            .insert_to_db(new_playlist_collection.id)
+            .await
+            .unwrap();
         let new_playlist = Playlist::find_in_db(id).await.unwrap();
         new_playlist.add_aggs_to_db(&music_aggs).await.unwrap();
         new_playlist.add_aggs_to_db(&music_aggs).await.unwrap();
@@ -116,7 +124,7 @@ mod test {
         .unwrap();
 
         let first_playlist = playlist.first().unwrap();
-        let id = first_playlist.insert_to_db().await.unwrap();
+        let id = first_playlist.insert_to_db(new_playlist_collection.id).await.unwrap();
         let inserted_playlist = Playlist::find_in_db(id).await.unwrap();
         inserted_playlist
             .add_aggs_to_db(&first_playlist.fetch_musics_online(1, 2333).await.unwrap())
