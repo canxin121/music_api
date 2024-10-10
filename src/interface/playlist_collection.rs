@@ -36,6 +36,20 @@ impl PlaylistCollection {
             name,
         }
     }
+
+    pub async fn get_form_db() -> anyhow::Result<Vec<Self>> {
+        let db = get_db()
+            .await
+            .ok_or(anyhow::anyhow!("Database is not inited."))?;
+
+        let models = playlist_collection::Entity::find().all(&db).await?;
+        let collections = models
+            .into_iter()
+            .map(|p| p.into())
+            .collect::<Vec<PlaylistCollection>>();
+        Ok(collections)
+    }
+
     pub async fn get_playlists_from_db(&self) -> anyhow::Result<Vec<Playlist>> {
         let db = get_db()
             .await
