@@ -4,7 +4,9 @@ use sea_orm_migration::{
     schema::{big_integer, string},
 };
 
-use crate::data::models::playlist_collection::Column;
+use crate::{
+    data::models::playlist_collection::Column, interface::playlist_collection::PlaylistCollection,
+};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -27,7 +29,11 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .to_owned(),
             )
-            .await
+            .await?;
+        let _ = PlaylistCollection::new("我的歌单".to_string())
+            .insert_to_db()
+            .await;
+        Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
