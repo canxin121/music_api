@@ -43,10 +43,11 @@ impl PlaylistCollection {
             .ok_or(anyhow::anyhow!("Database is not inited."))?;
 
         let models = playlist_collection::Entity::find().all(&db).await?;
-        let collections = models
+        let mut collections = models
             .into_iter()
             .map(|p| p.into())
             .collect::<Vec<PlaylistCollection>>();
+        collections.sort_by(|a, b| a.order.cmp(&b.order));
         Ok(collections)
     }
 
