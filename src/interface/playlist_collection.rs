@@ -3,7 +3,7 @@ use sea_orm::{
     prelude::Expr,
     sea_query::{Alias, Func, Query},
     ActiveValue::NotSet,
-    ConnectionTrait, EntityTrait, ModelTrait, QueryFilter, Related, Set, Unchanged,
+    ConnectionTrait, EntityTrait, QueryFilter, Set, Unchanged,
 };
 use serde::{Deserialize, Serialize};
 
@@ -125,7 +125,7 @@ impl PlaylistCollection {
             .await
             .ok_or(anyhow::anyhow!("Database is not inited."))?;
 
-        let result = playlist_collection::Entity::delete_by_id(self.id)
+        playlist_collection::Entity::delete_by_id(self.id)
             .exec(&db)
             .await?;
         Ok(())
@@ -150,7 +150,7 @@ mod test {
         let playlist1 = Playlist::new("test".to_string(), None, None, vec![]);
         let playlist2 = Playlist::new("test".to_string(), None, None, vec![]);
 
-        let id = playlist1
+        let _id = playlist1
             .insert_to_db(new_playlist_collection.id)
             .await
             .unwrap();
@@ -160,7 +160,7 @@ mod test {
             .unwrap();
 
         let playlist1 = Playlist::find_in_db(id).await.unwrap();
-        let playlist2 = Playlist::find_in_db(id).await.unwrap();
+        let _playlist2 = Playlist::find_in_db(id).await.unwrap();
 
         let playlists = new_playlist_collection
             .get_playlists_from_db()

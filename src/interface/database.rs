@@ -124,7 +124,10 @@ mod test {
         .unwrap();
 
         let first_playlist = playlist.first().unwrap();
-        let id = first_playlist.insert_to_db(new_playlist_collection.id).await.unwrap();
+        let id = first_playlist
+            .insert_to_db(new_playlist_collection.id)
+            .await
+            .unwrap();
         let inserted_playlist = Playlist::find_in_db(id).await.unwrap();
         inserted_playlist
             .add_aggs_to_db(&first_playlist.fetch_musics_online(1, 2333).await.unwrap())
