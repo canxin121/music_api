@@ -779,4 +779,18 @@ mod test {
 
         println!("{:?}", playlists);
     }
+
+    #[tokio::test]
+    async fn test_fetch_aritist_musics() {
+        let muscis = super::MusicAggregator::fetch_artist_music_aggregators(
+            MusicServer::Kuwo,
+            "1001",
+            5,
+            100,
+        )
+        .await
+        .unwrap();
+
+        println!("{:?}", muscis);
+    }
 }

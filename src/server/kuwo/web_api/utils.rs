@@ -14,17 +14,19 @@ pub fn decode_html_entities(input: String) -> String {
 pub fn parse_qualities_minfo(input: &str) -> Vec<Quality> {
     let mut qualities: Vec<Quality> = input
         .split(';')
-        .map(|s| {
-            let parts: Vec<&str> = s
-                .split(',')
-                .map(|kv| kv.split(':').nth(1).unwrap_or_default())
-                .collect();
-            Quality {
+        .filter_map(|s| {
+            let parts: Vec<&str> = s.split(',').filter_map(|kv| kv.split(':').nth(1)).collect();
+
+            if parts.len() < 4 {
+                return None;
+            }
+
+            Some(Quality {
                 summary: format!("{}k{}", parts[1].to_string(), parts[2].to_string()),
                 bitrate: Some(parts[1].to_string()),
                 format: Some(parts[2].to_string()),
                 size: Some(parts[3].to_string()),
-            }
+            })
         })
         .filter(|q| {
             if let Some(format) = &q.format {
@@ -34,14 +36,15 @@ pub fn parse_qualities_minfo(input: &str) -> Vec<Quality> {
             }
         })
         .collect();
+
     qualities.sort_by(|a, b| {
         let a_bitrate = a.bitrate.as_deref().unwrap_or("");
         let b_bitrate = b.bitrate.as_deref().unwrap_or("");
-        b_bitrate
-            .parse::<u32>()
-            .unwrap_or_default()
-            .cmp(&a_bitrate.parse::<u32>().unwrap_or_default())
+        let a_bitrate_parsed = a_bitrate.parse::<u32>().ok().unwrap_or(0); // 使用 ok() 来处理解析错误
+        let b_bitrate_parsed = b_bitrate.parse::<u32>().ok().unwrap_or(0);
+        b_bitrate_parsed.cmp(&a_bitrate_parsed)
     });
+
     qualities
 }
 
