@@ -69,14 +69,18 @@ pub fn parse_qualities_formats(formats: &str) -> Vec<Quality> {
     parse_qualities_minfo(&minfo)
 }
 
-pub async fn get_music_rid_pic(music_rid: &str) -> Result<String, anyhow::Error> {
+pub async fn get_music_rid_pic(music_rid: &str) -> Result<Option<String>, anyhow::Error> {
     let url = format!(
         "http://artistpicserver.kuwo.cn/pic.web?corp=kuwo&type=rid_pic&pictype=500&size=500&rid={}",
         music_rid.replace("MUSIC_", "")
     );
     let resp = CLIENT.get(&url).send().await?;
     let text = resp.text().await?;
-    Ok(text)
+    if text == "NO_PIC" {
+        Ok(None)
+    } else {
+        Ok(Some(text))
+    }
 }
 
 pub fn find_kuwo_plylist_id_from_share_url(url: &str) -> Option<String> {

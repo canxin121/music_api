@@ -48,7 +48,7 @@ pub async fn get_musics_from_chart(
     }
 
     for (music, handle) in musics.iter_mut().zip(handles) {
-        music.cover = handle.await?.ok();
+        music.cover = handle.await?.ok().ok_or(anyhow::anyhow!("No cover"))?;
     }
 
     Ok(musics)

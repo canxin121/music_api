@@ -25,7 +25,7 @@ pub async fn search_kuwo_musics(
     }
 
     for (music, handle) in musics.iter_mut().zip(handles) {
-        music.cover = handle.await?.ok();
+        music.cover = handle.await?.ok().ok_or(anyhow::anyhow!("no cover"))?;
     }
 
     Ok(musics)

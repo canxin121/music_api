@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -45,7 +45,7 @@ pub(crate) async fn get_kuwo_music_album(
         let music_id = music.id.clone();
         handles.push(async move {
             let music_pic = get_music_rid_pic(&music_id).await?;
-            Ok::<String, anyhow::Error>(music_pic)
+            Ok::<String, anyhow::Error>(music_pic.ok_or(anyhow!("No pic found."))?)
         })
     }
 

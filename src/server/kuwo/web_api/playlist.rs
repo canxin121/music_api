@@ -41,7 +41,7 @@ pub async fn get_kuwo_musics_of_music_list(
     }
 
     for (music, handle) in musiclist.musiclist.iter_mut().zip(handles) {
-        music.cover = handle.await?.ok();
+        music.cover = handle.await?.ok().ok_or(anyhow::anyhow!("No cover"))?;
     }
 
     let musiclist = musiclist.musiclist.into_iter().map(|m| m.into()).collect();

@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -30,7 +31,7 @@ pub async fn get_artist_musics(
         let music_id = music.musicrid.clone();
         handles.push(async move {
             let music_pic = get_music_rid_pic(&music_id).await?;
-            Ok::<String, anyhow::Error>(music_pic)
+            Ok::<String, anyhow::Error>(music_pic.ok_or(anyhow!("no pic"))?)
         });
     }
 
@@ -73,7 +74,7 @@ mod test {
     #[tokio::test]
     async fn test_get_artist_musics() {
         let result = get_artist_musics("74016", 1, 30).await.unwrap();
-        println!("{:?}", result);
+        result.iter().for_each(|m| println!("{:?}", m.cover));
     }
 
     #[tokio::test]
@@ -215,13 +216,7 @@ impl Into<crate::server::kuwo::model::Model> for ArtistMusic {
             album: Some(self.album),
             album_id: Some(self.albumid),
             qualities: parse_qualities_formats(&self.formats).into(),
-            cover: {
-                if self.cover.is_some() && self.cover.as_ref().unwrap().starts_with("NO_PIC") {
-                    self.cover.clone()
-                } else {
-                    None
-                }
-            },
+            cover: self.cover,
             // artist_pic: build_web_artistpic_short(&self.web_artistpic_short),
             // album_pic: build_web_albumpic_short(&self.web_albumpic_short),
             duration: None,
