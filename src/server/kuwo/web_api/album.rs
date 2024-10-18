@@ -68,6 +68,16 @@ pub(crate) async fn get_kuwo_music_album(
     }
 }
 
+#[tokio::test]
+async fn test_get_kuwo_music_album() {
+    let (playlist, musics) = get_kuwo_music_album("56865692", "LOST CORNER", 1, 10)
+        .await
+        .unwrap();
+
+    println!("{:?}", playlist);
+    println!("{:?}", musics);
+}
+
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Album {
@@ -246,13 +256,7 @@ impl Into<crate::server::kuwo::model::Model> for AlbumMusic {
             album: Some(self.album),
             album_id: Some(self.album_id),
             qualities: parse_qualities_formats(&self.formats).into(),
-            cover: {
-                if self.cover.is_some() && self.cover.as_ref().unwrap().starts_with("NO_PIC") {
-                    self.cover.clone()
-                } else {
-                    None
-                }
-            },
+            cover: self.cover,
             // artist_pic: build_web_artistpic_short(&self.web_artistpic_short),
             // album_pic: build_web_albumpic_short(&self.web_albumpic_short),
             duration: None,
