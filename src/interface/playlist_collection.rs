@@ -61,13 +61,15 @@ impl PlaylistCollection {
             .all(&db)
             .await?;
 
-        let playlists = models
+        let mut playlists = models
             .into_iter()
             .map(|p| p.into())
             .collect::<Vec<Playlist>>();
+        playlists.sort_by(|a, b| a.order.cmp(&b.order));
 
         Ok(playlists)
     }
+    
     pub async fn insert_to_db(&self) -> anyhow::Result<i64> {
         let db: sea_orm::DatabaseConnection = get_db()
             .await
