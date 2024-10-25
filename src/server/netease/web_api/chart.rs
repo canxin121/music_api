@@ -21,18 +21,23 @@ pub async fn get_music_chart_collection() -> anyhow::Result<ServerMusicChartColl
 pub async fn get_musics_from_chart(
     id: &str,
     page: u16,
-    size: u16,
+    _size: u16,
 ) -> anyhow::Result<Vec<netease::model::Model>> {
     if page == 0 {
         return Err(anyhow::anyhow!("page must be greater than 0"));
     }
 
+    if page > 1 {
+        return Ok(vec![]);
+    }
+
+    // in test, the 'p' has no effect, the result is always the same
     let result:NeteaseMusicChartMusicResult = CLIENT.post("https://music.163.com/weapi/v3/playlist/detail")
             .header("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.90 Safari/537.36")
             .header("origin", "https://music.163.com")
             .form(&weapi(&json!({
                 "id": id,
-                "n": size,
+                "n": 10000,
                 "p": page,
             }).to_string())?).send().await?.json().await?;
 
@@ -56,7 +61,7 @@ mod test {
 
     #[tokio::test]
     async fn test_get_musics_from_chart() {
-        let result = super::get_musics_from_chart("19723756", 1, 10)
+        let result = super::get_musics_from_chart("19723756", 1, 100)
             .await
             .unwrap();
         println!("{:?}", result);
