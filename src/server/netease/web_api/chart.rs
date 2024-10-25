@@ -76,21 +76,172 @@ pub struct NeteaseMusicChartCollectionResult {
     // pub artist_toplist: ArtistToplist,
 }
 
-impl Into<MusicChartCollection> for NeteaseMusicChartCollectionResult {
-    fn into(self) -> MusicChartCollection {
-        MusicChartCollection {
-            name: "网易云榜单".to_string(),
-            summary: None,
-            charts: self.list.into_iter().map(|chart| chart.into()).collect(),
-        }
-    }
-}
-
 impl Into<ServerMusicChartCollection> for NeteaseMusicChartCollectionResult {
     fn into(self) -> ServerMusicChartCollection {
+        let mut charts: Vec<Option<MusicChart>> = self
+            .list
+            .into_iter()
+            .map(|chart| Some(chart.into()))
+            .collect();
+        let official_charts = charts
+            .iter_mut()
+            .filter(|c| {
+                c.is_some()
+                    && ["飙升榜", "新歌榜", "热歌榜", "原创榜"]
+                        .contains(&c.as_ref().unwrap().name.as_str())
+            })
+            .map(|c| c.take().unwrap())
+            .collect::<Vec<MusicChart>>();
+        let official_charts = MusicChartCollection {
+            name: "官方榜".to_string(),
+            summary: None,
+            charts: official_charts,
+        };
+        let selected_charts = charts
+            .iter_mut()
+            .filter(|c| {
+                c.is_some()
+                    && (["实时热度榜", "赏音榜", "网络热歌榜", "蛋仔派对听歌榜"]
+                        .contains(&c.as_ref().unwrap().name.as_str())
+                        || ["星云", "黑胶"]
+                            .iter()
+                            .any(|k| c.as_ref().unwrap().name.starts_with(k)))
+            })
+            .map(|c| c.take().unwrap())
+            .collect::<Vec<MusicChart>>();
+        let selected_charts = MusicChartCollection {
+            name: "精选榜".to_string(),
+            summary: None,
+            charts: selected_charts,
+        };
+        let genre_charts = charts
+            .iter_mut()
+            .filter(|c| {
+                c.is_some()
+                    && ([
+                        "云音乐电音榜",
+                        "欧美R&B榜",
+                        "云音乐说唱榜",
+                        "云音乐ACG榜",
+                        "云音乐摇滚榜",
+                        "云音乐民谣榜",
+                        "云音乐古典榜",
+                        "云音乐国风榜",
+                        "中文DJ榜",
+                    ]
+                    .contains(&c.as_ref().unwrap().name.as_str()))
+            })
+            .map(|c| c.take().unwrap())
+            .collect::<Vec<MusicChart>>();
+        let genre_charts = MusicChartCollection {
+            name: "曲风榜".to_string(),
+            summary: None,
+            charts: genre_charts,
+        };
+        let global_charts = charts
+            .iter_mut()
+            .filter(|c| {
+                c.is_some()
+                    && ([
+                        "美国Billboard榜",
+                        "UK排行榜周榜",
+                        "日本Oricon榜",
+                        "法国 NRJ Vos Hits 周榜",
+                        "俄罗斯top hit流行音乐榜",
+                        "Beatport全球电子舞曲榜",
+                    ]
+                    .contains(&c.as_ref().unwrap().name.as_str()))
+            })
+            .map(|c| c.take().unwrap())
+            .collect::<Vec<MusicChart>>();
+        let global_charts = MusicChartCollection {
+            name: "全球榜".to_string(),
+            summary: None,
+            charts: global_charts,
+        };
+        let language_charts = charts
+            .iter_mut()
+            .filter(|c| {
+                c.is_some()
+                    && (["云音乐欧美热歌榜", "云音乐欧美新歌榜"]
+                        .contains(&c.as_ref().unwrap().name.as_str())
+                        || ["语榜"]
+                            .iter()
+                            .any(|k| c.as_ref().unwrap().name.ends_with(k)))
+            })
+            .map(|c| c.take().unwrap())
+            .collect::<Vec<MusicChart>>();
+        let language_charts = MusicChartCollection {
+            name: "语言榜".to_string(),
+            summary: None,
+            charts: language_charts,
+        };
+        let special_charts = charts
+            .iter_mut()
+            .filter(|c| {
+                c.is_some()
+                    && ([
+                        "LOOK直播歌曲榜",
+                        "BEAT排行榜",
+                        "听歌识曲榜",
+                        "潜力爆款榜",
+                        "KTV唛榜",
+                        "Suno AI新歌榜",
+                    ]
+                    .contains(&c.as_ref().unwrap().name.as_str()))
+            })
+            .map(|c| c.take().unwrap())
+            .collect::<Vec<MusicChart>>();
+        let special_charts = MusicChartCollection {
+            name: "特色榜".to_string(),
+            summary: None,
+            charts: special_charts,
+        };
+        let car_charts = charts
+            .iter_mut()
+            .filter(|c| c.is_some() && c.as_ref().unwrap().name.ends_with("车友爱听榜"))
+            .map(|c| c.take().unwrap())
+            .collect::<Vec<MusicChart>>();
+        let car_charts = MusicChartCollection {
+            name: "车主榜".to_string(),
+            summary: None,
+            charts: car_charts,
+        };
+        let acg_charts = charts
+            .iter_mut()
+            .filter(|c| c.is_some() && c.as_ref().unwrap().name.contains("ACG"))
+            .map(|c| c.take().unwrap())
+            .collect::<Vec<MusicChart>>();
+        let acg_charts = MusicChartCollection {
+            name: "ACG榜".to_string(),
+            summary: None,
+            charts: acg_charts,
+        };
+        let other_charts = charts
+            .iter_mut()
+            .filter(|c| c.is_some())
+            .map(|c| c.take().unwrap())
+            .collect::<Vec<MusicChart>>();
+        let other_charts = MusicChartCollection {
+            name: "其他榜".to_string(),
+            summary: None,
+            charts: other_charts,
+        };
+        let collections = vec![
+            official_charts,
+            selected_charts,
+            genre_charts,
+            global_charts,
+            language_charts,
+            acg_charts,
+            special_charts,
+            car_charts,
+            other_charts,
+        ];
+
         ServerMusicChartCollection {
+            collections,
             server: crate::interface::server::MusicServer::Netease,
-            collections: vec![self.into()],
         }
     }
 }
