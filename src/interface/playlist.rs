@@ -345,7 +345,10 @@ impl Playlist {
                 .one(&db)
                 .await?
                 .ok_or(anyhow::anyhow!("Can't find music aggregator in db"))?;
-            aggs.push(agg.get_music_aggregator(&db, junction.order).await?);
+            let agg = agg.get_music_aggregator(&db, junction.order).await?;
+            if !agg.musics.is_empty() {
+                aggs.push(agg);
+            }
         }
         aggs.sort_by(|a, b| a.order.cmp(&b.order));
         Ok(aggs)
