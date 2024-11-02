@@ -22,7 +22,7 @@ pub fn parse_qualities_minfo(input: &str) -> Vec<Quality> {
             }
 
             Some(Quality {
-                summary: format!("{}k{}", parts[1].to_string(), parts[2].to_string()),
+                summary: parts[1].to_string(),
                 bitrate: Some(parts[1].to_string()),
                 format: Some(parts[2].to_string()),
                 size: Some(parts[3].to_string()),
