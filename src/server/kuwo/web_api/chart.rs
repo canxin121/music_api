@@ -75,7 +75,9 @@ mod test {
             .first()
             .unwrap();
         println!("{:?}", first_chart);
-        let musics = get_musics_from_chart(&first_chart.id, 1, 30).await.unwrap();
+        let musics = get_musics_from_chart(&first_chart.id, 999, 30)
+            .await
+            .unwrap();
         println!("{:?}", musics)
     }
 }
@@ -199,6 +201,7 @@ pub struct ChartMusicResult {
     // pub v9_pic2: String,
     // #[serde(rename = "type")]
     // pub type_field: String,
+    #[serde(default)]
     pub musiclist: Vec<KuwoChartMusic>,
     // pub volume: Volume,
     // pub current_volume: String,
