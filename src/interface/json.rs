@@ -1,7 +1,7 @@
 use std::{path::PathBuf, str::FromStr};
 
 use anyhow::anyhow;
-use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel as _};
+use sea_orm::{ActiveModelTrait, ActiveValue::NotSet, EntityTrait, IntoActiveModel as _};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -170,7 +170,11 @@ impl DatabaseJson {
         playlist_collection::Entity::insert_many(
             self.playlist_collection
                 .into_iter()
-                .map(|m| m.into_active_model().reset_all())
+                .map(|m| {
+                    let mut m = m.into_active_model().reset_all();
+                    m.id = NotSet;
+                    m
+                })
                 .collect::<Vec<playlist_collection::ActiveModel>>(),
         )
         .exec_without_returning(&db)
@@ -179,7 +183,11 @@ impl DatabaseJson {
         playlist::Entity::insert_many(
             self.playlists
                 .into_iter()
-                .map(|m| m.into_active_model().reset_all())
+                .map(|m| {
+                    let mut m = m.into_active_model().reset_all();
+                    m.id = NotSet;
+                    m
+                })
                 .collect::<Vec<playlist::ActiveModel>>(),
         )
         .exec_without_returning(&db)
@@ -188,6 +196,18 @@ impl DatabaseJson {
         if self.music_aggregators.is_empty() {
             return Ok(());
         }
+
+        music_aggregator::Entity::insert_many(
+            self.music_aggregators
+                .into_iter()
+                .map(|m| {
+                    let m = m.into_active_model().reset_all();
+                    m
+                })
+                .collect::<Vec<music_aggregator::ActiveModel>>(),
+        )
+        .exec_without_returning(&db)
+        .await?;
 
         kuwo::model::Entity::insert_many(
             self.kuwo_table
@@ -250,7 +270,6 @@ impl PlaylistJsonVec {
         Ok(result)
     }
 
-    /// takes ownership
     async fn insert_to_db(self, playlist_collection_id: i64) -> anyhow::Result<()> {
         for playlistjson in self.0 {
             let id = playlistjson
@@ -266,5 +285,102 @@ impl PlaylistJsonVec {
                 .await?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use sea_orm_migration::MigratorTrait as _;
+
+    use crate::{
+        data::migrations::Migrator,
+        interface::{
+            database::{get_db, set_db},
+            music_aggregator::MusicAggregator,
+            playlist::Playlist,
+            playlist_collection::PlaylistCollection,
+            server::MusicServer,
+        },
+    };
+
+    async fn re_init_db() {
+        let _ = tracing_subscriber::fmt::try_init();
+        let db_file = "./sample_data/test.db";
+        let path = std::path::Path::new(db_file);
+        if path.exists() {
+            std::fs::remove_file(path).unwrap();
+        }
+
+        std::fs::File::create(path).unwrap();
+
+        set_db(&("sqlite://".to_owned() + db_file)).await.unwrap();
+        Migrator::up(&get_db().await.unwrap(), None).await.unwrap();
+        let playlist_collection1 = PlaylistCollection {
+            id: -1,
+            order: -1,
+            name: "1".to_string(),
+        };
+        let inserted_playlist_collection1 = playlist_collection1.insert_to_db().await.unwrap();
+        let playlist_collection2 = PlaylistCollection {
+            id: -1,
+            order: -1,
+            name: "2".to_string(),
+        };
+        let inserted_playlist_collection2 = playlist_collection2.insert_to_db().await.unwrap();
+
+        let playlist1 = Playlist::new("1".to_string(), None, None, Vec::new());
+        let inserted_playlist1_id = playlist1
+            .insert_to_db(inserted_playlist_collection1)
+            .await
+            .unwrap();
+        let playlist2 = Playlist::new("2".to_string(), None, None, Vec::new());
+        let inserted_playlist2_id = playlist2
+            .insert_to_db(inserted_playlist_collection2)
+            .await
+            .unwrap();
+
+        let musics = MusicAggregator::search_online(
+            Vec::new(),
+            MusicServer::all(),
+            "张国荣".to_string(),
+            1,
+            100,
+        )
+        .await
+        .unwrap();
+        let playlist1 = Playlist::find_in_db(inserted_playlist1_id).await.unwrap();
+        playlist1.add_aggs_to_db(&musics).await.unwrap();
+
+        let musics = MusicAggregator::search_online(
+            Vec::new(),
+            MusicServer::all(),
+            "周杰伦".to_string(),
+            1,
+            100,
+        )
+        .await
+        .unwrap();
+        let playlist2 = Playlist::find_in_db(inserted_playlist2_id).await.unwrap();
+        playlist2.add_aggs_to_db(&musics).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_database_sqlite() {
+        re_init_db().await;
+        let db = MusicDataJson::from_database().await.unwrap();
+        let json = db.to_json().unwrap();
+        let db = MusicDataJson::from_json(&json).unwrap();
+        db.clone().apply_to_db(None, None).await.unwrap();
+
+        set_db("mysql://test:testpasswd@localhost:3306/app_rhyme")
+            .await
+            .unwrap();
+        db.clone().apply_to_db(None, None).await.unwrap();
+
+        set_db("postgresql://test:testpasswd@localhost:5432/app_rhyme")
+            .await
+            .unwrap();
+        db.clone().apply_to_db(None, None).await.unwrap();
     }
 }

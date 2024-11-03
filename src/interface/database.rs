@@ -141,7 +141,7 @@ mod test {
     #[tokio::test]
     #[serial_test::serial]
     async fn test_sqlite() {
-        tracing_subscriber::fmt::init();
+        let _ = tracing_subscriber::fmt::try_init();
         set_db("sqlite://./sample_data/test.db").await.unwrap();
         reinit_db().await.unwrap();
         test_op().await;
@@ -150,7 +150,7 @@ mod test {
     #[tokio::test]
     #[serial_test::serial]
     async fn test_mysql() {
-        tracing_subscriber::fmt::init();
+        let _ = tracing_subscriber::fmt::try_init();
         set_db("mysql://test:testpasswd@localhost:3306/app_rhyme")
             .await
             .unwrap();
@@ -161,7 +161,7 @@ mod test {
     #[tokio::test]
     #[serial_test::serial]
     async fn test_postgresql() {
-        tracing_subscriber::fmt::init();
+        let _ = tracing_subscriber::fmt::try_init();
         set_db("postgresql://test:testpasswd@localhost:5432/app_rhyme")
             .await
             .unwrap();
