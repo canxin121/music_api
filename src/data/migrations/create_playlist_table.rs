@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use sea_orm_migration::{
     prelude::*,
-    schema::{big_integer, json_null, string, string_null},
+    schema::{big_integer, json_null, string, string_null, text_null},
 };
 
 use crate::data::models::playlist::Column;
@@ -23,7 +23,7 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     .col(string(Column::Name))
-                    .col(string_null(Column::Summary))
+                    .col(text_null(Column::Summary))
                     .col(string_null(Column::Cover))
                     .col(big_integer(Column::Order).not_null())
                     .col(json_null(Column::Subscriptions))

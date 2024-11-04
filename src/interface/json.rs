@@ -1,7 +1,9 @@
-use std::{path::PathBuf, str::FromStr};
+use std::{collections::HashMap, path::PathBuf, str::FromStr};
 
 use anyhow::anyhow;
-use sea_orm::{ActiveModelTrait, ActiveValue::NotSet, EntityTrait, IntoActiveModel as _};
+use sea_orm::{
+    ActiveModelTrait, ActiveValue::NotSet, EntityTrait, IntoActiveModel as _, TransactionTrait,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -156,7 +158,7 @@ impl DatabaseJson {
         })
     }
 
-    async fn apply_to_db(self) -> anyhow::Result<()> {
+    async fn apply_to_db(mut self) -> anyhow::Result<()> {
         let db = get_db()
             .await
             .ok_or(anyhow::anyhow!("Database is not initialized"))?;
@@ -167,81 +169,99 @@ impl DatabaseJson {
             return Ok(());
         }
 
-        playlist_collection::Entity::insert_many(
-            self.playlist_collection
-                .into_iter()
-                .map(|m| {
-                    let mut m = m.into_active_model().reset_all();
-                    m.id = NotSet;
-                    m
-                })
-                .collect::<Vec<playlist_collection::ActiveModel>>(),
-        )
-        .exec_without_returning(&db)
-        .await?;
+        let conn = db.begin().await?;
 
-        playlist::Entity::insert_many(
-            self.playlists
-                .into_iter()
-                .map(|m| {
-                    let mut m = m.into_active_model().reset_all();
-                    m.id = NotSet;
-                    m
-                })
-                .collect::<Vec<playlist::ActiveModel>>(),
-        )
-        .exec_without_returning(&db)
-        .await?;
+        let mut new_playlist_collection_ids = HashMap::new();
+        for playlist_collection in self.playlist_collection.into_iter() {
+            let old_id = playlist_collection.id;
+            let mut m = playlist_collection.into_active_model().reset_all();
+            m.id = NotSet;
+            let id = playlist_collection::Entity::insert(m)
+                .exec(&conn)
+                .await?
+                .last_insert_id;
+            new_playlist_collection_ids.insert(old_id, id);
+        }
+
+        let mut new_playlist_ids = HashMap::new();
+        for mut playlist in self.playlists.into_iter() {
+            let old_playlist_id = playlist.id;
+            playlist.collection_id = *new_playlist_collection_ids
+                .get(&playlist.collection_id)
+                .ok_or(anyhow!(
+                    "Failed to convert old playlist collection id to new one."
+                ))?;
+            let new_playlist_id =
+                playlist::Entity::insert(playlist.into_active_model().reset_all())
+                    .exec(&conn)
+                    .await?
+                    .last_insert_id;
+            new_playlist_ids.insert(old_playlist_id, new_playlist_id);
+        }
 
         if self.music_aggregators.is_empty() {
             return Ok(());
         }
 
-        music_aggregator::Entity::insert_many(
-            self.music_aggregators
-                .into_iter()
-                .map(|m| {
-                    let m = m.into_active_model().reset_all();
-                    m
-                })
-                .collect::<Vec<music_aggregator::ActiveModel>>(),
-        )
-        .exec_without_returning(&db)
-        .await?;
+        for music_agg in self.music_aggregators {
+            match music_aggregator::Entity::insert(music_agg.into_active_model().reset_all())
+                .on_conflict_do_nothing()
+                .exec(&conn)
+                .await
+            {
+                Ok(_) => {}
+                Err(e) => {
+                    log::error!("Failed to insert music aggregator: {:?}", e);
+                }
+            }
+        }
 
-        kuwo::model::Entity::insert_many(
-            self.kuwo_table
-                .into_iter()
-                .map(|m| {
-                    let active = m.into_active_model().reset_all();
-                    active
-                })
-                .collect::<Vec<kuwo::model::ActiveModel>>(),
-        )
-        .exec_without_returning(&db)
-        .await?;
+        for music_model in self.kuwo_table {
+            match kuwo::model::Entity::insert(music_model.into_active_model().reset_all())
+                .on_conflict_do_nothing()
+                .exec_without_returning(&conn)
+                .await
+            {
+                Ok(_) => {}
+                Err(e) => {
+                    log::error!("Failed to insert kuwo music model: {:?}", e);
+                }
+            }
+        }
 
-        netease::model::Entity::insert_many(
-            self.netease_table
-                .into_iter()
-                .map(|m| {
-                    let active = m.into_active_model().reset_all();
-                    active
-                })
-                .collect::<Vec<netease::model::ActiveModel>>(),
-        )
-        .exec_without_returning(&db)
-        .await?;
+        for music_model in self.netease_table {
+            match netease::model::Entity::insert(music_model.into_active_model().reset_all())
+                .on_conflict_do_nothing()
+                .exec_without_returning(&conn)
+                .await
+            {
+                Ok(_) => {}
+                Err(e) => {
+                    log::error!("Failed to insert netease music model: {:?}", e);
+                }
+            }
+        }
 
-        playlist_music_junction::Entity::insert_many(
-            self.playlist_music_junctions
-                .into_iter()
-                .map(|m| m.into_active_model().reset_all())
-                .collect::<Vec<playlist_music_junction::ActiveModel>>(),
-        )
-        .exec_without_returning(&db)
-        .await?;
+        for junction in self.playlist_music_junctions.iter_mut() {
+            junction.playlist_id = *new_playlist_ids
+                .get(&junction.playlist_id)
+                .ok_or(anyhow!("Failed to convert old playlist id to new one."))?;
+        }
 
+        for junction in self.playlist_music_junctions {
+            match playlist_music_junction::Entity::insert(junction.into_active_model().reset_all())
+                .on_conflict_do_nothing()
+                .exec_without_returning(&conn)
+                .await
+            {
+                Ok(_) => {}
+                Err(e) => {
+                    log::error!("Failed to insert playlist music junction: {:?}", e);
+                }
+            }
+        }
+
+        conn.commit().await?;
         Ok(())
     }
 }
@@ -303,7 +323,8 @@ mod test {
             server::MusicServer,
         },
     };
-
+    
+    #[allow(unused)]
     async fn re_init_db() {
         let _ = tracing_subscriber::fmt::try_init();
         let db_file = "./sample_data/test.db";
@@ -366,21 +387,22 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_database_sqlite() {
-        re_init_db().await;
-        let db = MusicDataJson::from_database().await.unwrap();
-        let json = db.to_json().unwrap();
-        let db = MusicDataJson::from_json(&json).unwrap();
-        db.clone().apply_to_db(None, None).await.unwrap();
+    async fn test_database() {
+        let database_json = MusicDataJson::load_from("sample_data/app_rhyme_database.json")
+            .await
+            .unwrap();
+
+        set_db("sqlite://./sample_data/test.db").await.unwrap();
+        database_json.clone().apply_to_db(None, None).await.unwrap();
 
         set_db("mysql://test:testpasswd@localhost:3306/app_rhyme")
             .await
             .unwrap();
-        db.clone().apply_to_db(None, None).await.unwrap();
+        database_json.clone().apply_to_db(None, None).await.unwrap();
 
         set_db("postgresql://test:testpasswd@localhost:5432/app_rhyme")
             .await
             .unwrap();
-        db.clone().apply_to_db(None, None).await.unwrap();
+        database_json.clone().apply_to_db(None, None).await.unwrap();
     }
 }
