@@ -1,6 +1,6 @@
 use std::{path::PathBuf, str::FromStr};
 
-use sea_orm::{Database, DatabaseConnection};
+use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use sea_orm_migration::MigratorTrait as _;
 
 use crate::{data::migrations::Migrator, DB_POOL};
@@ -37,7 +37,10 @@ pub async fn set_db(database_url: &str) -> Result<(), anyhow::Error> {
         create_sqlite_db_file(database_url).await?;
     }
 
-    let db_connection = Database::connect(database_url).await?;
+    let mut connection_options = ConnectOptions::new(database_url);
+    connection_options.sqlx_logging_level(log::LevelFilter::Debug);
+
+    let db_connection = Database::connect(connection_options).await?;
 
     Migrator::up(&db_connection, None).await?;
 
