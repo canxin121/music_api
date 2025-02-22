@@ -6,8 +6,8 @@ use base64::Engine as _;
 use lazy_static::lazy_static;
 use md5::digest::core_api::CoreWrapper;
 use md5::Digest;
-use rand::distributions::Alphanumeric;
-use rand::thread_rng;
+use rand::distr::Alphanumeric;
+use rand::rng;
 use rand::Rng;
 use rsa::hazmat::rsa_encrypt;
 use rsa::{pkcs8::DecodePublicKey, BigUint, RsaPublicKey};
@@ -35,12 +35,7 @@ pub enum AesMode {
     ECB,
 }
 
-pub fn aes_encrypt(
-    buffer: &[u8],
-    key: &[u8; 16],
-    iv: Option<&[u8; 16]>,
-    mode: AesMode,
-) -> Vec<u8> {
+pub fn aes_encrypt(buffer: &[u8], key: &[u8; 16], iv: Option<&[u8; 16]>, mode: AesMode) -> Vec<u8> {
     match mode {
         AesMode::CBC => {
             let iv = iv.expect("IV must be provided for CBC mode");
@@ -97,7 +92,7 @@ fn rsa_encrypt_to_hex(message: &[u8]) -> Result<String, rsa::errors::Error> {
 }
 
 pub fn weapi(data: &str) -> Result<HashMap<&'static str, String>, Error> {
-    let rng = thread_rng();
+    let rng = rng();
 
     let random_key: [u8; 16] = rng
         .sample_iter(&Alphanumeric)
